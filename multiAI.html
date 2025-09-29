@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative AI - Brain Co-Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            min-height: 100vh;
+            background: #ffffff;
+            color: #000000;
+            overflow-x: hidden;
+        }
+        
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            padding: 1.5rem 2rem;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #000000;
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .logo:hover {
+            opacity: 0.7;
+        }
+        
+        .nav-button {
+            padding: 10px 24px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #ffffff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Main Content */
+        main {
+            padding-top: 100px;
+            min-height: 100vh;
+        }
+        
+        .hero-section {
+            padding: 4rem 2rem;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            color: #000000;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .subtitle {
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            font-weight: 400;
+            color: rgba(0, 0, 0, 0.7);
+            line-height: 1.6;
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            animation: fadeInUp 0.8s ease-out;
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
+        }
+        
+        /* AI Cards Grid */
+        .ai-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .ai-card {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            animation: fadeInUp 0.8s ease-out;
+            animation-fill-mode: both;
+        }
+        
+        .ai-card:nth-child(1) { animation-delay: 0.2s; }
+        .ai-card:nth-child(2) { animation-delay: 0.3s; }
+        .ai-card:nth-child(3) { animation-delay: 0.4s; }
+        .ai-card:nth-child(4) { animation-delay: 0.5s; }
+        
+        .ai-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .ai-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .ai-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: #000000;
+        }
+        
+        .ai-card p {
+            font-size: 0.95rem;
+            color: rgba(0, 0, 0, 0.6);
+            line-height: 1.6;
+        }
+        
+        .ai-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 1rem;
+        }
+        
+        .status-active {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+        }
+        
+        .status-coming {
+            background: rgba(251, 146, 60, 0.1);
+            color: #fb923c;
+        }
+        
+        /* Features Section */
+        .features-section {
+            padding: 4rem 2rem;
+            background: linear-gradient(to bottom, #f9fafb, #ffffff);
+        }
+        
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .features-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            color: #000000;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+        
+        .feature-item {
+            padding: 1.5rem;
+            animation: fadeInUp 0.8s ease-out;
+            animation-fill-mode: both;
+        }
+        
+        .feature-item:nth-child(1) { animation-delay: 0.6s; }
+        .feature-item:nth-child(2) { animation-delay: 0.7s; }
+        .feature-item:nth-child(3) { animation-delay: 0.8s; }
+        
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .feature-item h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #000000;
+        }
+        
+        .feature-item p {
+            font-size: 0.9rem;
+            color: rgba(0, 0, 0, 0.6);
+            line-height: 1.5;
+        }
+        
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                padding: 0 1rem;
+            }
+            
+            .hero-section {
+                padding: 2rem 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .ai-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="/" class="logo">Brain co-lab</a>
+            <a href="/" class="nav-button">Home</a>
+        </div>
+    </header>
+    
+    <main>
+        <section class="hero-section">
+            <h1>Collaborative AI</h1>
+            <p class="subtitle">
+                Harness the power of multiple AI models working together. 
+                Connect, collaborate, and create with the most advanced AI systems available.
+            </p>
+        </section>
+        
+        <section class="ai-grid">
+            <div class="ai-card">
+                <div class="ai-icon">🤖</div>
+                <h3>GPT-4</h3>
+                <p>Advanced language model for complex reasoning, creative writing, and code generation.</p>
+                <span class="ai-status status-active">Active</span>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-icon">🎨</div>
+                <h3>DALL-E 3</h3>
+                <p>State-of-the-art image generation from text descriptions with stunning creativity.</p>
+                <span class="ai-status status-active">Active</span>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-icon">🧠</div>
+                <h3>Claude 3</h3>
+                <p>Anthropic's helpful, harmless, and honest AI assistant for thoughtful conversations.</p>
+                <span class="ai-status status-active">Active</span>
+            </div>
+            
+            <div class="ai-card">
+                <div class="ai-icon">⚡</div>
+                <h3>Gemini</h3>
+                <p>Google's multimodal AI model for understanding text, images, and code simultaneously.</p>
+                <span class="ai-status status-coming">Coming Soon</span>
+            </div>
+        </section>
+        
+        <section class="features-section">
+            <div class="features-container">
+                <h2 class="features-title">Why Collaborative AI?</h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🔄</div>
+                        <h4>Seamless Integration</h4>
+                        <p>Connect multiple AI models in one unified workspace</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💡</div>
+                        <h4>Enhanced Creativity</h4>
+                        <p>Combine strengths of different models for better results</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🚀</div>
+                        <h4>Increased Productivity</h4>
+                        <p>Accomplish complex tasks faster with AI collaboration</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
