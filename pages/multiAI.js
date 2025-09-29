@@ -170,7 +170,12 @@ export default function MultiAIChat() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-white text-gray-900">
+      <style jsx global>{`
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        }
+      `}</style>
       <div className="max-w-7xl mx-auto p-4">
         {/* Header with Balance */}
         <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
@@ -285,7 +290,6 @@ export default function MultiAIChat() {
                 className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
                 rows="8"
                 disabled={isLoading}
-                style={{ fontFamily: 'Inter, sans-serif' }}
               />
               <div className="flex space-x-2 mt-3">
                 <button
