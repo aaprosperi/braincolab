@@ -38,7 +38,6 @@ export default function MultiAIChat() {
     { id: 'perplexity/llama-3.1-sonar-large-128k-online', name: 'Sonar L', provider: 'Perplexity', inputPrice: 0.001, outputPrice: 0.001 },
   ];
 
-  // Fetch credits on mount
   useEffect(() => {
     fetchCredits();
   }, []);
@@ -52,13 +51,14 @@ export default function MultiAIChat() {
       }
     } catch (error) {
       console.error('Error fetching credits:', error);
-      // Set a default value to avoid errors
       setCredits(0);
     }
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export default function MultiAIChat() {
   }, [messages]);
 
   const estimateTokens = (text) => {
-    // Rough estimate: 1 token ≈ 4 characters
     return Math.ceil(text.length / 4);
   };
 
@@ -107,12 +106,11 @@ export default function MultiAIChat() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `Error: ${response.status}`);
+        throw new Error(errorData.error || 'Error: ' + response.status);
       }
 
       const data = await response.json();
       
-      // Calculate cost
       const inputTokens = estimateTokens(updatedMessages.map(m => m.content).join(' '));
       const outputTokens = estimateTokens(data.message);
       const cost = calculateCost(inputTokens, outputTokens, selectedModel);
@@ -129,7 +127,6 @@ export default function MultiAIChat() {
       setMessages([...updatedMessages, assistantMessage]);
       setTotalCost(prev => prev + cost);
       
-      // Update credits
       fetchCredits();
     } catch (error) {
       console.error('Error:', error);
@@ -137,7 +134,7 @@ export default function MultiAIChat() {
         role: 'assistant',
         content: error.message.includes('API') 
           ? 'Please configure your AI Gateway API key in Vercel Dashboard > Settings > Environment Variables' 
-          : `Error: ${error.message}`,
+          : 'Error: ' + error.message,
         model: selectedModel,
         timestamp: new Date().toISOString(),
         isError: true
@@ -181,9 +178,8 @@ export default function MultiAIChat() {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </Head>
       
-      <div className="min-h-screen bg-white text-gray-900" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif" }}>
+      <div className="min-h-screen bg-white text-gray-900">
         <div className="max-w-7xl mx-auto p-4">
-          {/* Header with Balance */}
           <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
             <div>
               <h1 className="text-2xl font-light">Brain Co-Lab</h1>
@@ -193,7 +189,7 @@ export default function MultiAIChat() {
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
                 <div className="text-xs text-gray-500">AI Gateway Balance</div>
                 <div className="text-lg font-semibold">
-                  ${(credits || 0).toFixed(2)}
+                  ${typeof credits === 'number' ? credits.toFixed(2) : '0.00'}
                 </div>
                 {totalCost > 0 && (
                   <div className="text-xs text-gray-500 mt-1">
@@ -204,34 +200,32 @@ export default function MultiAIChat() {
             </div>
           </div>
 
-          {/* Model Grid */}
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {models.map((model) => (
-                <button
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    selectedModel === model.id
-                      ? `${getProviderColor(model.provider)} border-2`
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                  }`}
-                >
-                  <div className="text-xs font-medium text-gray-500">{model.provider}</div>
-                  <div className="text-sm font-semibold">{model.name}</div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    ${model.inputPrice}/${model.outputPrice}
-                  </div>
-                </button>
-              ))}
+              {models.map((model) => {
+                const isSelected = selectedModel === model.id;
+                const colorClass = isSelected ? getProviderColor(model.provider) : 'border-gray-200 hover:border-gray-300 bg-white';
+                
+                return (
+                  <button
+                    key={model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                    className={'p-3 rounded-lg border-2 transition-all ' + colorClass}
+                  >
+                    <div className="text-xs font-medium text-gray-500">{model.provider}</div>
+                    <div className="text-sm font-semibold">{model.name}</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      ${model.inputPrice}/${model.outputPrice}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Chat Container */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Messages Area */}
             <div className="lg:col-span-2 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="h-[500px] overflow-y-auto p-4">
+              <div className="h-96 lg:h-[500px] overflow-y-auto p-4">
                 {messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400">
                     <div className="text-center">
@@ -241,40 +235,43 @@ export default function MultiAIChat() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {messages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.role === 'user'
-                            ? 'bg-gray-900 text-white'
-                            : message.isError
-                            ? 'bg-red-50 text-red-700 border border-red-200'
-                            : 'bg-white border border-gray-200'
-                        }`}>
-                          {message.role === 'assistant' && message.model && !message.isError && (
-                            <div className="text-xs text-gray-500 mb-1">
-                              {models.find(m => m.id === message.model)?.name || message.model}
-                              {message.cost !== undefined && (
-                                <span className="ml-2 text-gray-400">
-                                  Cost: ${message.cost.toFixed(6)} 
-                                  ({message.tokens?.input}/{message.tokens?.output} tokens)
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                    {messages.map((message, index) => {
+                      const isUser = message.role === 'user';
+                      const messageClass = isUser
+                        ? 'bg-gray-900 text-white'
+                        : message.isError
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'bg-white border border-gray-200';
+                      
+                      return (
+                        <div
+                          key={index}
+                          className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}
+                        >
+                          <div className={'max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 ' + messageClass}>
+                            {message.role === 'assistant' && message.model && !message.isError && (
+                              <div className="text-xs text-gray-500 mb-1">
+                                {models.find(m => m.id === message.model)?.name || message.model}
+                                {message.cost !== undefined && (
+                                  <span className="ml-2 text-gray-400">
+                                    Cost: ${message.cost.toFixed(6)} 
+                                    ({message.tokens?.input}/{message.tokens?.output} tokens)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {isLoading && (
                       <div className="flex justify-start">
                         <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-200"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-400"></div>
                           </div>
                         </div>
                       </div>
@@ -285,7 +282,6 @@ export default function MultiAIChat() {
               </div>
             </div>
 
-            {/* Input Area */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg border border-gray-200 p-4">
                 <textarea
@@ -301,11 +297,11 @@ export default function MultiAIChat() {
                   <button
                     onClick={handleSendMessage}
                     disabled={isLoading || !inputMessage.trim()}
-                    className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                      isLoading || !inputMessage.trim()
+                    className={'flex-1 py-2 px-4 rounded-lg font-medium transition-colors ' + 
+                      (isLoading || !inputMessage.trim()
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
-                    }`}
+                        : 'bg-gray-900 text-white hover:bg-gray-800')
+                    }
                   >
                     {isLoading ? 'Sending...' : 'Send'}
                   </button>
@@ -335,6 +331,22 @@ export default function MultiAIChat() {
           </div>
         </div>
       </div>
+      
+      <style jsx global>{`
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .delay-200 {
+          animation-delay: 0.2s;
+        }
+        
+        .delay-400 {
+          animation-delay: 0.4s;
+        }
+      `}</style>
     </>
   );
 }
