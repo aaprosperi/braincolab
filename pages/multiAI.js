@@ -5,35 +5,54 @@ export default function MultiAIChat() {
   const [inputMessage, setInputMessage] = useState('');
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
   const [isLoading, setIsLoading] = useState(false);
+  const [credits, setCredits] = useState(null);
+  const [totalCost, setTotalCost] = useState(0);
   const messagesEndRef = useRef(null);
 
   const models = [
     // OpenAI
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5', provider: 'OpenAI', price: '$0.50/$1.50' },
-    { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', price: '$30/$60' },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', price: '$2.50/$10' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', price: '$0.15/$0.60' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5', provider: 'OpenAI', inputPrice: 0.0005, outputPrice: 0.0015 },
+    { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', inputPrice: 0.03, outputPrice: 0.06 },
+    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', inputPrice: 0.0025, outputPrice: 0.01 },
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', inputPrice: 0.00015, outputPrice: 0.0006 },
     // Anthropic
-    { id: 'anthropic/claude-3-haiku-20240307', name: 'Haiku', provider: 'Anthropic', price: '$0.25/$1.25' },
-    { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Sonnet 3.5', provider: 'Anthropic', price: '$3/$15' },
-    { id: 'anthropic/claude-3-opus-20240229', name: 'Opus', provider: 'Anthropic', price: '$15/$75' },
+    { id: 'anthropic/claude-3-haiku-20240307', name: 'Haiku', provider: 'Anthropic', inputPrice: 0.00025, outputPrice: 0.00125 },
+    { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Sonnet 3.5', provider: 'Anthropic', inputPrice: 0.003, outputPrice: 0.015 },
+    { id: 'anthropic/claude-3-opus-20240229', name: 'Opus', provider: 'Anthropic', inputPrice: 0.015, outputPrice: 0.075 },
     // Google
-    { id: 'google/gemini-1.5-flash', name: 'Gemini Flash', provider: 'Google', price: '$0.075/$0.30' },
-    { id: 'google/gemini-1.5-pro', name: 'Gemini Pro', provider: 'Google', price: '$1.25/$5' },
-    { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0', provider: 'Google', price: 'Free' },
+    { id: 'google/gemini-1.5-flash', name: 'Gemini Flash', provider: 'Google', inputPrice: 0.000075, outputPrice: 0.0003 },
+    { id: 'google/gemini-1.5-pro', name: 'Gemini Pro', provider: 'Google', inputPrice: 0.00125, outputPrice: 0.005 },
+    { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0', provider: 'Google', inputPrice: 0, outputPrice: 0 },
     // Meta
-    { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3', provider: 'Meta', price: '$0.18/$0.18' },
+    { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3', provider: 'Meta', inputPrice: 0.00018, outputPrice: 0.00018 },
     // Mistral
-    { id: 'mistral/mistral-large-latest', name: 'Mistral L', provider: 'Mistral', price: '$2/$6' },
-    { id: 'mistral/mistral-small-latest', name: 'Mistral S', provider: 'Mistral', price: '$0.20/$0.60' },
+    { id: 'mistral/mistral-large-latest', name: 'Mistral L', provider: 'Mistral', inputPrice: 0.002, outputPrice: 0.006 },
+    { id: 'mistral/mistral-small-latest', name: 'Mistral S', provider: 'Mistral', inputPrice: 0.0002, outputPrice: 0.0006 },
     // xAI
-    { id: 'xai/grok-2-1212', name: 'Grok 2', provider: 'xAI', price: '$2/$10' },
+    { id: 'xai/grok-2-1212', name: 'Grok 2', provider: 'xAI', inputPrice: 0.002, outputPrice: 0.01 },
     // DeepSeek
-    { id: 'deepseek/deepseek-chat', name: 'DeepSeek', provider: 'DeepSeek', price: '$0.14/$0.28' },
+    { id: 'deepseek/deepseek-chat', name: 'DeepSeek', provider: 'DeepSeek', inputPrice: 0.00014, outputPrice: 0.00028 },
     // Perplexity
-    { id: 'perplexity/llama-3.1-sonar-small-128k-online', name: 'Sonar S', provider: 'Perplexity', price: '$0.20/$0.20' },
-    { id: 'perplexity/llama-3.1-sonar-large-128k-online', name: 'Sonar L', provider: 'Perplexity', price: '$1/$1' },
+    { id: 'perplexity/llama-3.1-sonar-small-128k-online', name: 'Sonar S', provider: 'Perplexity', inputPrice: 0.0002, outputPrice: 0.0002 },
+    { id: 'perplexity/llama-3.1-sonar-large-128k-online', name: 'Sonar L', provider: 'Perplexity', inputPrice: 0.001, outputPrice: 0.001 },
   ];
+
+  // Fetch credits on mount
+  useEffect(() => {
+    fetchCredits();
+  }, []);
+
+  const fetchCredits = async () => {
+    try {
+      const response = await fetch('/api/credits');
+      if (response.ok) {
+        const data = await response.json();
+        setCredits(data.credits);
+      }
+    } catch (error) {
+      console.error('Error fetching credits:', error);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +61,20 @@ export default function MultiAIChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const estimateTokens = (text) => {
+    // Rough estimate: 1 token ≈ 4 characters
+    return Math.ceil(text.length / 4);
+  };
+
+  const calculateCost = (inputTokens, outputTokens, model) => {
+    const modelInfo = models.find(m => m.id === model);
+    if (!modelInfo) return 0;
+    
+    const inputCost = (inputTokens / 1000) * modelInfo.inputPrice;
+    const outputCost = (outputTokens / 1000) * modelInfo.outputPrice;
+    return inputCost + outputCost;
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -76,14 +109,25 @@ export default function MultiAIChat() {
 
       const data = await response.json();
       
+      // Calculate cost
+      const inputTokens = estimateTokens(updatedMessages.map(m => m.content).join(' '));
+      const outputTokens = estimateTokens(data.message);
+      const cost = calculateCost(inputTokens, outputTokens, selectedModel);
+      
       const assistantMessage = {
         role: 'assistant',
         content: data.message,
         model: selectedModel,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        cost: cost,
+        tokens: { input: inputTokens, output: outputTokens }
       };
 
       setMessages([...updatedMessages, assistantMessage]);
+      setTotalCost(prev => prev + cost);
+      
+      // Update credits
+      fetchCredits();
     } catch (error) {
       console.error('Error:', error);
       const errorMessage = {
@@ -108,29 +152,45 @@ export default function MultiAIChat() {
 
   const clearChat = () => {
     setMessages([]);
+    setTotalCost(0);
   };
 
-  const getProviderStyles = (provider) => {
-    const styles = {
-      'OpenAI': 'bg-emerald-500 hover:bg-emerald-600',
-      'Anthropic': 'bg-amber-500 hover:bg-amber-600',
-      'Google': 'bg-blue-500 hover:bg-blue-600',
-      'Meta': 'bg-violet-500 hover:bg-violet-600',
-      'Mistral': 'bg-rose-500 hover:bg-rose-600',
-      'xAI': 'bg-slate-600 hover:bg-slate-700',
-      'Perplexity': 'bg-cyan-500 hover:bg-cyan-600',
-      'DeepSeek': 'bg-indigo-500 hover:bg-indigo-600'
+  const getProviderColor = (provider) => {
+    const colors = {
+      'OpenAI': 'border-emerald-500 bg-emerald-50 text-emerald-700',
+      'Anthropic': 'border-orange-500 bg-orange-50 text-orange-700',
+      'Google': 'border-blue-500 bg-blue-50 text-blue-700',
+      'Meta': 'border-violet-500 bg-violet-50 text-violet-700',
+      'Mistral': 'border-rose-500 bg-rose-50 text-rose-700',
+      'xAI': 'border-gray-500 bg-gray-50 text-gray-700',
+      'Perplexity': 'border-cyan-500 bg-cyan-50 text-cyan-700',
+      'DeepSeek': 'border-indigo-500 bg-indigo-50 text-indigo-700'
     };
-    return styles[provider] || 'bg-gray-500 hover:bg-gray-600';
+    return colors[provider] || 'border-gray-500 bg-gray-50 text-gray-700';
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="max-w-7xl mx-auto p-4">
-        {/* Header */}
-        <div className="mb-6 border-b border-gray-800 pb-4">
-          <h1 className="text-2xl font-light">Brain Co-Lab</h1>
-          <p className="text-sm text-gray-400 mt-1">Multi-AI Interface • 17 Models</p>
+        {/* Header with Balance */}
+        <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
+          <div>
+            <h1 className="text-2xl font-light">Brain Co-Lab</h1>
+            <p className="text-sm text-gray-500 mt-1">Multi-AI Interface</p>
+          </div>
+          <div className="text-right">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
+              <div className="text-xs text-gray-500">AI Gateway Balance</div>
+              <div className="text-lg font-semibold">
+                {credits !== null ? `$${credits?.toFixed(2) || '0.00'}` : 'Loading...'}
+              </div>
+              {totalCost > 0 && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Session: -${totalCost.toFixed(4)}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Model Grid */}
@@ -140,18 +200,16 @@ export default function MultiAIChat() {
               <button
                 key={model.id}
                 onClick={() => setSelectedModel(model.id)}
-                className={`relative group transition-all duration-200 ${
+                className={`p-3 rounded-lg border-2 transition-all ${
                   selectedModel === model.id
-                    ? 'ring-2 ring-white ring-offset-2 ring-offset-black'
-                    : ''
+                    ? `${getProviderColor(model.provider)} border-2`
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
                 }`}
               >
-                <div className={`p-3 rounded-lg ${getProviderStyles(model.provider)} ${
-                  selectedModel === model.id ? 'opacity-100' : 'opacity-80'
-                }`}>
-                  <div className="text-xs font-medium opacity-80">{model.provider}</div>
-                  <div className="text-sm font-bold">{model.name}</div>
-                  <div className="text-xs opacity-60 mt-1">{model.price}/M</div>
+                <div className="text-xs font-medium text-gray-500">{model.provider}</div>
+                <div className="text-sm font-semibold">{model.name}</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  ${model.inputPrice}/${model.outputPrice}
                 </div>
               </button>
             ))}
@@ -161,13 +219,13 @@ export default function MultiAIChat() {
         {/* Chat Container */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Messages Area */}
-          <div className="lg:col-span-2 bg-gray-950 rounded-lg border border-gray-800">
+          <div className="lg:col-span-2 bg-gray-50 rounded-lg border border-gray-200">
             <div className="h-[500px] overflow-y-auto p-4">
               {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-gray-400">
                   <div className="text-center">
                     <div className="text-4xl mb-3">🤖</div>
-                    <p>Select a model and start chatting</p>
+                    <p className="font-light">Select a model and start chatting</p>
                   </div>
                 </div>
               ) : (
@@ -179,14 +237,20 @@ export default function MultiAIChat() {
                     >
                       <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
                         message.role === 'user'
-                          ? 'bg-white text-black'
+                          ? 'bg-gray-900 text-white'
                           : message.isError
-                          ? 'bg-red-900 text-red-100'
-                          : 'bg-gray-800 text-gray-100'
+                          ? 'bg-red-50 text-red-700 border border-red-200'
+                          : 'bg-white border border-gray-200'
                       }`}>
                         {message.role === 'assistant' && message.model && (
-                          <div className="text-xs opacity-60 mb-1">
+                          <div className="text-xs text-gray-500 mb-1">
                             {models.find(m => m.id === message.model)?.name || message.model}
+                            {message.cost !== undefined && (
+                              <span className="ml-2 text-gray-400">
+                                Cost: ${message.cost.toFixed(6)} 
+                                ({message.tokens?.input}/{message.tokens?.output} tokens)
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
@@ -195,7 +259,7 @@ export default function MultiAIChat() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-gray-800 rounded-lg px-4 py-2">
+                      <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
@@ -212,15 +276,16 @@ export default function MultiAIChat() {
 
           {/* Input Area */}
           <div className="lg:col-span-1">
-            <div className="bg-gray-950 rounded-lg border border-gray-800 p-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
-                className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-500 resize-none"
+                className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
                 rows="8"
                 disabled={isLoading}
+                style={{ fontFamily: 'Inter, sans-serif' }}
               />
               <div className="flex space-x-2 mt-3">
                 <button
@@ -228,27 +293,30 @@ export default function MultiAIChat() {
                   disabled={isLoading || !inputMessage.trim()}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                     isLoading || !inputMessage.trim()
-                      ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                      : 'bg-white text-black hover:bg-gray-200'
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-900 text-white hover:bg-gray-800'
                   }`}
                 >
                   {isLoading ? 'Sending...' : 'Send'}
                 </button>
                 <button
                   onClick={clearChat}
-                  className="px-4 py-2 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors"
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                   Clear
                 </button>
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-800">
+              <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="text-xs text-gray-500">
                   <div>Current Model:</div>
-                  <div className="text-white font-medium mt-1">
+                  <div className="text-gray-900 font-medium mt-1">
                     {models.find(m => m.id === selectedModel)?.name}
                   </div>
                   <div className="text-gray-400 mt-1">
-                    {models.find(m => m.id === selectedModel)?.price}/M tokens
+                    Input: ${models.find(m => m.id === selectedModel)?.inputPrice}/1K
+                  </div>
+                  <div className="text-gray-400">
+                    Output: ${models.find(m => m.id === selectedModel)?.outputPrice}/1K
                   </div>
                 </div>
               </div>
