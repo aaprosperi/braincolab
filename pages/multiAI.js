@@ -18,8 +18,8 @@ export default function MultiAIChat() {
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', inputPrice: 0.00015, outputPrice: 0.0006 },
     // Anthropic
     { id: 'anthropic/claude-3-haiku-20240307', name: 'Haiku', provider: 'Anthropic', inputPrice: 0.00025, outputPrice: 0.00125 },
-    { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Sonnet 3.5', provider: 'Anthropic', inputPrice: 0.003, outputPrice: 0.015 },
-    { id: 'anthropic/claude-3-opus-20240229', name: 'Opus', provider: 'Anthropic', inputPrice: 0.015, outputPrice: 0.075 },
+    { id: 'anthropic/claude-sonnet-4.5', name: 'Sonnet 4.5', provider: 'Anthropic', inputPrice: 0.003, outputPrice: 0.015 },
+    { id: 'anthropic/claude-4.1-opus', name: 'Opus 4.1', provider: 'Anthropic', inputPrice: 0.015, outputPrice: 0.075 },
     // Google
     { id: 'google/gemini-1.5-flash', name: 'Gemini Flash', provider: 'Google', inputPrice: 0.000075, outputPrice: 0.0003 },
     { id: 'google/gemini-1.5-pro', name: 'Gemini Pro', provider: 'Google', inputPrice: 0.00125, outputPrice: 0.005 },
