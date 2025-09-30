@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   try {
     // Call Vercel AI Gateway
-    const response = await fetch('https://gateway.vercel.sh/v1/chat/completions', {
+    const response = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
