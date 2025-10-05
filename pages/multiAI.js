@@ -8,7 +8,9 @@ export default function MultiAIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [credits, setCredits] = useState(null);
   const [totalCost, setTotalCost] = useState(0);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const models = [
     // OpenAI
@@ -91,6 +93,21 @@ export default function MultiAIChat() {
     setMessages(updatedMessages);
     setInputMessage('');
     setIsLoading(true);
+    setIsStreaming(true);
+
+    // Crear mensaje placeholder para el streaming
+    const assistantMessageIndex = updatedMessages.length;
+    const assistantMessage = {
+      role: 'assistant',
+      content: '',
+      model: selectedModel,
+      timestamp: new Date().toISOString(),
+      isStreaming: true
+    };
+    setMessages([...updatedMessages, assistantMessage]);
+
+    // Crear AbortController para cancelación
+    abortControllerRef.current = new AbortController();
 
     try {
       const response = await fetch('/api/chat', {
@@ -102,46 +119,97 @@ export default function MultiAIChat() {
           messages: updatedMessages,
           model: selectedModel,
         }),
+        signal: abortControllerRef.current.signal
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || 'Error: ' + response.status);
+        throw new Error('Error: ' + response.status);
       }
 
-      const data = await response.json();
-      
-      const inputTokens = estimateTokens(updatedMessages.map(m => m.content).join(' '));
-      const outputTokens = estimateTokens(data.message);
-      const cost = calculateCost(inputTokens, outputTokens, selectedModel);
-      
-      const assistantMessage = {
-        role: 'assistant',
-        content: data.message,
-        model: selectedModel,
-        timestamp: new Date().toISOString(),
-        cost: cost,
-        tokens: { input: inputTokens, output: outputTokens }
-      };
+      // Procesar el stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
 
-      setMessages([...updatedMessages, assistantMessage]);
-      setTotalCost(prev => prev + cost);
-      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            
+            if (data === '[DONE]') {
+              break;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullContent += parsed.content;
+                
+                // Actualizar mensaje en tiempo real
+                setMessages(prev => {
+                  const newMessages = [...prev];
+                  newMessages[assistantMessageIndex] = {
+                    ...newMessages[assistantMessageIndex],
+                    content: fullContent
+                  };
+                  return newMessages;
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing chunk:', e);
+            }
+          }
+        }
+      }
+
+      // Calcular costos después del streaming
+      const inputTokens = estimateTokens(updatedMessages.map(m => m.content).join(' '));
+      const outputTokens = estimateTokens(fullContent);
+      const cost = calculateCost(inputTokens, outputTokens, selectedModel);
+
+      // Actualizar con costos finales
+      setMessages(prev => {
+        const newMessages = [...prev];
+        newMessages[assistantMessageIndex] = {
+          ...newMessages[assistantMessageIndex],
+          isStreaming: false,
+          cost: cost,
+          tokens: { input: inputTokens, output: outputTokens }
+        };
+        return newMessages;
+      });
+
+      setTotalCost(prevCost => prevCost + cost);
       fetchCredits();
+      
     } catch (error) {
-      console.error('Error:', error);
-      const errorMessage = {
-        role: 'assistant',
-        content: error.message.includes('API') 
-          ? 'Please configure your AI Gateway API key in Vercel Dashboard > Settings > Environment Variables' 
-          : 'Error: ' + error.message,
-        model: selectedModel,
-        timestamp: new Date().toISOString(),
-        isError: true
-      };
-      setMessages([...updatedMessages, errorMessage]);
+      if (error.name === 'AbortError') {
+        console.log('Stream cancelled by user');
+      } else {
+        console.error('Error:', error);
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[assistantMessageIndex] = {
+            role: 'assistant',
+            content: 'Error: ' + error.message,
+            model: selectedModel,
+            timestamp: new Date().toISOString(),
+            isError: true
+          };
+          return newMessages;
+        });
+      }
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -183,7 +251,7 @@ export default function MultiAIChat() {
           <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
             <div>
               <h1 className="text-2xl font-light">Brain Co-Lab</h1>
-              <p className="text-sm text-gray-500 mt-1">Multi-AI Interface</p>
+              <p className="text-sm text-gray-500 mt-1">Multi-AI Interface {isStreaming && '• Streaming...'}</p>
             </div>
             <div className="text-right">
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
@@ -210,7 +278,8 @@ export default function MultiAIChat() {
                   <button
                     key={model.id}
                     onClick={() => setSelectedModel(model.id)}
-                    className={'p-3 rounded-lg border-2 transition-all ' + colorClass}
+                    disabled={isLoading}
+                    className={'p-3 rounded-lg border-2 transition-all ' + colorClass + (isLoading ? ' opacity-50 cursor-not-allowed' : '')}
                   >
                     <div className="text-xs font-medium text-gray-500">{model.provider}</div>
                     <div className="text-sm font-semibold">{model.name}</div>
@@ -231,6 +300,7 @@ export default function MultiAIChat() {
                     <div className="text-center">
                       <div className="text-4xl mb-3">🤖</div>
                       <p className="font-light">Select a model and start chatting</p>
+                      <p className="text-xs mt-2">Now with real-time streaming!</p>
                     </div>
                   </div>
                 ) : (
@@ -252,6 +322,7 @@ export default function MultiAIChat() {
                             {message.role === 'assistant' && message.model && !message.isError && (
                               <div className="text-xs text-gray-500 mb-1">
                                 {models.find(m => m.id === message.model)?.name || message.model}
+                                {message.isStreaming && ' • Streaming...'}
                                 {message.cost !== undefined && (
                                   <span className="ml-2 text-gray-400">
                                     Cost: ${message.cost.toFixed(6)} 
@@ -260,22 +331,14 @@ export default function MultiAIChat() {
                                 )}
                               </div>
                             )}
-                            <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
+                            <div className="text-sm whitespace-pre-wrap break-words">
+                              {message.content}
+                              {message.isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse"></span>}
+                            </div>
                           </div>
                         </div>
                       );
                     })}
-                    {isLoading && (
-                      <div className="flex justify-start">
-                        <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-200"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-400"></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 )}
@@ -303,7 +366,7 @@ export default function MultiAIChat() {
                         : 'bg-gray-900 text-white hover:bg-gray-800')
                     }
                   >
-                    {isLoading ? 'Sending...' : 'Send'}
+                    {isStreaming ? 'Streaming...' : isLoading ? 'Sending...' : 'Send'}
                   </button>
                   <button
                     onClick={clearChat}
