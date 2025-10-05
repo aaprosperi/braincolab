@@ -1,0 +1,14 @@
+# Brain Co-Lab Robots.txt
+# https://braincolab.vercel.app
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://braincolab.vercel.app/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Disallow admin or private paths (if any)
+# Disallow: /api/
