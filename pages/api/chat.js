@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Call Vercel AI Gateway
+    // Call Vercel AI Gateway with streaming enabled
     const response = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -33,6 +33,7 @@ export default async function handler(req, res) {
         })),
         max_tokens: 1000,
         temperature: 0.7,
+        stream: true,  // ← ACTIVAR STREAMING
       }),
     });
 
@@ -52,22 +53,60 @@ export default async function handler(req, res) {
       });
     }
 
-    const data = await response.json();
-    
-    // Extract the message from the response
-    const message = data.choices?.[0]?.message?.content || 'No response from AI';
-    
-    return res.status(200).json({ 
-      message,
-      usage: data.usage,
-      model: data.model
-    });
+    // Configurar headers para Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Procesar el stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        res.write('data: [DONE]\n\n');
+        res.end();
+        break;
+      }
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          
+          if (data === '[DONE]') {
+            res.write('data: [DONE]\n\n');
+            res.end();
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            
+            if (content) {
+              // Enviar solo el contenido al frontend
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch (e) {
+            // Ignorar errores de parsing
+          }
+        }
+      }
+    }
     
   } catch (error) {
     console.error('Chat API error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to process chat request',
-      details: error.message 
-    });
+    
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        error: 'Failed to process chat request',
+        details: error.message 
+      });
+    }
   }
 }
