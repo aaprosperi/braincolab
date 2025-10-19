@@ -9,8 +9,11 @@ export default function MultiAIChat() {
   const [credits, setCredits] = useState(null);
   const [totalCost, setTotalCost] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const models = [
     // OpenAI
@@ -42,7 +45,74 @@ export default function MultiAIChat() {
 
   useEffect(() => {
     fetchCredits();
+    initializeSpeechRecognition();
   }, []);
+
+  const initializeSpeechRecognition = () => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'es-ES'; // Cambia a 'en-US' si prefieres inglés
+
+        recognition.onstart = () => {
+          setIsListening(true);
+        };
+
+        recognition.onresult = (event) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + ' ';
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          if (finalTranscript) {
+            setInputMessage(prev => prev + finalTranscript);
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          setIsRecording(false);
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          if (isRecording) {
+            // Si el usuario todavía está presionando el botón, reiniciar
+            recognition.start();
+          }
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+  };
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsRecording(true);
+    }
+  };
 
   const fetchCredits = async () => {
     try {
@@ -347,20 +417,51 @@ export default function MultiAIChat() {
 
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
-                  rows="8"
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <textarea
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message or use voice..."
+                    className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
+                    rows="8"
+                    disabled={isLoading}
+                  />
+                  {isListening && (
+                    <div className="absolute top-2 right-2 flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-red-500 font-medium">Escuchando...</span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex space-x-2 mt-3">
+                  <button
+                    onClick={toggleRecording}
+                    disabled={isLoading}
+                    className={'px-4 py-2 rounded-lg font-medium transition-all ' +
+                      (isRecording
+                        ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300')
+                    }
+                    title={isRecording ? 'Stop recording' : 'Start voice input'}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
                   <button
                     onClick={handleSendMessage}
                     disabled={isLoading || !inputMessage.trim()}
-                    className={'flex-1 py-2 px-4 rounded-lg font-medium transition-colors ' + 
+                    className={'flex-1 py-2 px-4 rounded-lg font-medium transition-colors ' +
                       (isLoading || !inputMessage.trim()
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : 'bg-gray-900 text-white hover:bg-gray-800')
