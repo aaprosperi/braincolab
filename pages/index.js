@@ -1,41 +1,7 @@
-import Head from 'next/head'
-import { useEffect, useState } from 'react'
+import Head from 'next/head';
+import { LANDING_FEATURES, FEATURED_MODELS } from '../utils/constants';
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const features = [
-    {
-      icon: '🤖',
-      title: 'Multi-AI Models',
-      description: '17+ AI models from OpenAI, Anthropic, Google, Meta and more'
-    },
-    {
-      icon: '⚡',
-      title: 'Lightning Fast',
-      description: 'Powered by Vercel Edge Functions for instant responses'
-    },
-    {
-      icon: '💰',
-      title: 'Cost Tracking',
-      description: 'Real-time usage monitoring and cost analysis per model'
-    },
-    {
-      icon: '🔐',
-      title: 'Secure',
-      description: 'Your API keys are safely managed through Vercel'
-    }
-  ]
-
-  const models = [
-    'GPT-4', 'Claude 3', 'Gemini Pro', 'Llama 3.3',
-    'Mistral', 'Grok', 'DeepSeek', 'Perplexity'
-  ]
-
   return (
     <>
       <Head>
@@ -68,7 +34,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="pt-20 pb-32 px-4">
           <div className="max-w-7xl mx-auto text-center">
-            <div className={`transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <div className="animate-fade-in">
               <h1 className="text-5xl sm:text-7xl font-bold text-gray-900 mb-6">
                 One Platform,
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> All AIs</span>
@@ -95,15 +61,12 @@ export default function Home() {
                 </a>
               </div>
 
-              {/* Floating badges */}
+              {/* Model badges */}
               <div className="flex flex-wrap justify-center gap-2 mb-8">
-                {models.map((model, i) => (
+                {FEATURED_MODELS.map((model) => (
                   <span
                     key={model}
-                    className={`px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-md transition-all duration-500 hover:shadow-lg ${
-                      mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                    }`}
-                    style={{ transitionDelay: `${i * 50}ms` }}
+                    className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-md hover:shadow-lg transition-all duration-200"
                   >
                     {model}
                   </span>
@@ -120,13 +83,10 @@ export default function Home() {
               Everything you need in one place
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {features.map((feature, i) => (
+              {LANDING_FEATURES.map((feature, i) => (
                 <div
                   key={i}
-                  className={`p-6 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-all duration-500 ${
-                    mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                  }`}
-                  style={{ transitionDelay: `${i * 100}ms` }}
+                  className="p-6 rounded-2xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-xl transition-all duration-300"
                 >
                   <div className="text-4xl mb-4">{feature.icon}</div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -206,6 +166,23 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(1rem);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+      `}</style>
     </>
-  )
+  );
 }
