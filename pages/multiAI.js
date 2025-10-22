@@ -1,5 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
+import Navigation from '../components/layout/Navigation';
+import Container from '../components/layout/Container';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import ModelSelector from '../components/chat/ModelSelector';
+import ChatMessage from '../components/chat/ChatMessage';
+import ChatInput from '../components/chat/ChatInput';
 
 export default function MultiAIChat() {
   const [messages, setMessages] = useState([]);
@@ -43,75 +52,19 @@ export default function MultiAIChat() {
     { id: 'perplexity/llama-3.1-sonar-large-128k-online', name: 'Sonar L', provider: 'Perplexity', inputPrice: 0.001, outputPrice: 0.001 },
   ];
 
+  // Inicialización
   useEffect(() => {
     fetchCredits();
     initializeSpeechRecognition();
   }, []);
 
-  const initializeSpeechRecognition = () => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'es-ES'; // Cambia a 'en-US' si prefieres inglés
+  // Auto-scroll cuando hay nuevos mensajes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-        recognition.onstart = () => {
-          setIsListening(true);
-        };
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' ';
-            } else {
-              interimTranscript += transcript;
-            }
-          }
-
-          if (finalTranscript) {
-            setInputMessage(prev => prev + finalTranscript);
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          setIsRecording(false);
-          setIsListening(false);
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-          if (isRecording) {
-            // Si el usuario todavía está presionando el botón, reiniciar
-            recognition.start();
-          }
-        };
-
-        recognitionRef.current = recognition;
-      }
-    }
-  };
-
-  const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
-      return;
-    }
-
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-      setIsListening(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const fetchCredits = async () => {
@@ -127,24 +80,66 @@ export default function MultiAIChat() {
     }
   };
 
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  const initializeSpeechRecognition = () => {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'es-ES';
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => {
+      setIsListening(false);
+      if (isRecording) recognition.start();
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        }
+      }
+      if (finalTranscript) {
+        setInputMessage(prev => prev + finalTranscript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsRecording(false);
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  };
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert('El reconocimiento de voz no está soportado en este navegador. Por favor usa Chrome o Edge.');
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsRecording(true);
     }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const estimateTokens = (text) => {
-    return Math.ceil(text.length / 4);
-  };
+  const estimateTokens = (text) => Math.ceil(text.length / 4);
 
   const calculateCost = (inputTokens, outputTokens, model) => {
     const modelInfo = models.find(m => m.id === model);
     if (!modelInfo) return 0;
-    
+
     const inputCost = (inputTokens / 1000) * modelInfo.inputPrice;
     const outputCost = (outputTokens / 1000) * modelInfo.outputPrice;
     return inputCost + outputCost;
@@ -165,26 +160,22 @@ export default function MultiAIChat() {
     setIsLoading(true);
     setIsStreaming(true);
 
-    // Crear mensaje placeholder para el streaming
     const assistantMessageIndex = updatedMessages.length;
     const assistantMessage = {
       role: 'assistant',
       content: '',
-      model: selectedModel,
+      model: models.find(m => m.id === selectedModel)?.name || selectedModel,
       timestamp: new Date().toISOString(),
       isStreaming: true
     };
     setMessages([...updatedMessages, assistantMessage]);
 
-    // Crear AbortController para cancelación
     abortControllerRef.current = new AbortController();
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: updatedMessages,
           model: selectedModel,
@@ -192,18 +183,14 @@ export default function MultiAIChat() {
         signal: abortControllerRef.current.signal
       });
 
-      if (!response.ok) {
-        throw new Error('Error: ' + response.status);
-      }
+      if (!response.ok) throw new Error('Error: ' + response.status);
 
-      // Procesar el stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
 
       while (true) {
         const { done, value } = await reader.read();
-        
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
@@ -212,17 +199,12 @@ export default function MultiAIChat() {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
-            
-            if (data === '[DONE]') {
-              break;
-            }
+            if (data === '[DONE]') break;
 
             try {
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 fullContent += parsed.content;
-                
-                // Actualizar mensaje en tiempo real
                 setMessages(prev => {
                   const newMessages = [...prev];
                   newMessages[assistantMessageIndex] = {
@@ -239,12 +221,10 @@ export default function MultiAIChat() {
         }
       }
 
-      // Calcular costos después del streaming
       const inputTokens = estimateTokens(updatedMessages.map(m => m.content).join(' '));
       const outputTokens = estimateTokens(fullContent);
       const cost = calculateCost(inputTokens, outputTokens, selectedModel);
 
-      // Actualizar con costos finales
       setMessages(prev => {
         const newMessages = [...prev];
         newMessages[assistantMessageIndex] = {
@@ -258,11 +238,9 @@ export default function MultiAIChat() {
 
       setTotalCost(prevCost => prevCost + cost);
       fetchCredits();
-      
+
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Stream cancelled by user');
-      } else {
+      if (error.name !== 'AbortError') {
         console.error('Error:', error);
         setMessages(prev => {
           const newMessages = [...prev];
@@ -283,234 +261,196 @@ export default function MultiAIChat() {
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   const clearChat = () => {
     setMessages([]);
     setTotalCost(0);
   };
 
-  const getProviderColor = (provider) => {
-    const colors = {
-      'OpenAI': 'border-emerald-500 bg-emerald-50 text-emerald-700',
-      'Anthropic': 'border-orange-500 bg-orange-50 text-orange-700',
-      'Google': 'border-blue-500 bg-blue-50 text-blue-700',
-      'Meta': 'border-violet-500 bg-violet-50 text-violet-700',
-      'Mistral': 'border-rose-500 bg-rose-50 text-rose-700',
-      'xAI': 'border-gray-500 bg-gray-50 text-gray-700',
-      'Perplexity': 'border-cyan-500 bg-cyan-50 text-cyan-700',
-      'DeepSeek': 'border-indigo-500 bg-indigo-50 text-indigo-700'
-    };
-    return colors[provider] || 'border-gray-500 bg-gray-50 text-gray-700';
-  };
+  const selectedModelInfo = models.find(m => m.id === selectedModel);
 
   return (
     <>
       <Head>
-        <title>Brain Co-Lab - Multi AI</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <title>BrainColab - Chat Multi-IA en Tiempo Real</title>
+        <meta name="description" content="Chatea con múltiples modelos de IA. Streaming en tiempo real, entrada de voz y seguimiento de costos." />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      
-      <div className="min-h-screen bg-white text-gray-900">
-        <div className="max-w-7xl mx-auto p-4">
-          <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
-            <div>
-              <h1 className="text-2xl font-light">Brain Co-Lab</h1>
-              <p className="text-sm text-gray-500 mt-1">Multi-AI Interface {isStreaming && '• Streaming...'}</p>
-            </div>
-            <div className="text-right">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-                <div className="text-xs text-gray-500">AI Gateway Balance</div>
-                <div className="text-lg font-semibold">
-                  ${typeof credits === 'number' ? credits.toFixed(2) : '0.00'}
-                </div>
-                {totalCost > 0 && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Session: -${totalCost.toFixed(4)}
+
+      <div className="min-h-screen bg-white">
+        <Navigation />
+
+        <div className="pt-20">
+          <Container size="lg">
+            {/* Header */}
+            <div className="py-6 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    Chat Multi-IA
+                  </h1>
+                  <div className="flex items-center space-x-3 mt-2">
+                    <Badge variant={isStreaming ? 'success' : 'default'}>
+                      {isStreaming ? '🔴 Streaming' : '⚪ Listo'}
+                    </Badge>
+                    {selectedModelInfo && (
+                      <Badge variant="primary">
+                        {selectedModelInfo.provider} {selectedModelInfo.name}
+                      </Badge>
+                    )}
                   </div>
-                )}
+                </div>
+
+                <Card padding="sm" className="w-full sm:w-auto">
+                  <div className="text-center sm:text-right">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Saldo Gateway
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      ${typeof credits === 'number' ? credits.toFixed(2) : '0.00'}
+                    </div>
+                    {totalCost > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Sesión: -${totalCost.toFixed(4)}
+                      </div>
+                    )}
+                  </div>
+                </Card>
               </div>
             </div>
-          </div>
 
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {models.map((model) => {
-                const isSelected = selectedModel === model.id;
-                const colorClass = isSelected ? getProviderColor(model.provider) : 'border-gray-200 hover:border-gray-300 bg-white';
-                
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => setSelectedModel(model.id)}
-                    disabled={isLoading}
-                    className={'p-3 rounded-lg border-2 transition-all ' + colorClass + (isLoading ? ' opacity-50 cursor-not-allowed' : '')}
-                  >
-                    <div className="text-xs font-medium text-gray-500">{model.provider}</div>
-                    <div className="text-sm font-semibold">{model.name}</div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      ${model.inputPrice}/${model.outputPrice}
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Model Selector */}
+            <div className="py-6 border-b border-gray-200">
+              <ModelSelector
+                models={models}
+                selectedModel={selectedModel}
+                onSelectModel={setSelectedModel}
+                disabled={isLoading}
+              />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="h-96 lg:h-[500px] overflow-y-auto p-4">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                    <div className="text-center">
-                      <div className="text-4xl mb-3">🤖</div>
-                      <p className="font-light">Select a model and start chatting</p>
-                      <p className="text-xs mt-2">Now with real-time streaming!</p>
+            {/* Chat Area */}
+            <div className="py-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Messages Panel */}
+                <div className="lg:col-span-2">
+                  <Card padding="none" className="h-[600px] flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-6">
+                      {messages.length === 0 ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center text-4xl">
+                              🤖
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              Bienvenido a BrainColab
+                            </h3>
+                            <p className="text-gray-600 mb-1">
+                              Selecciona un modelo y comienza a chatear
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              ✨ Streaming en tiempo real • 🎤 Entrada de voz • 💰 Seguimiento de costos
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {messages.map((message, index) => (
+                            <ChatMessage key={index} message={message} />
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </>
+                      )}
                     </div>
-                  </div>
-                ) : (
+                  </Card>
+                </div>
+
+                {/* Input Panel */}
+                <div className="lg:col-span-1">
                   <div className="space-y-4">
-                    {messages.map((message, index) => {
-                      const isUser = message.role === 'user';
-                      const messageClass = isUser
-                        ? 'bg-gray-900 text-white'
-                        : message.isError
-                        ? 'bg-red-50 text-red-700 border border-red-200'
-                        : 'bg-white border border-gray-200';
-                      
-                      return (
-                        <div
-                          key={index}
-                          className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}
+                    {/* Chat Input Component */}
+                    <Card padding="md">
+                      <ChatInput
+                        value={inputMessage}
+                        onChange={setInputMessage}
+                        onSubmit={handleSendMessage}
+                        onVoiceInput={toggleRecording}
+                        disabled={isLoading}
+                        loading={isLoading}
+                        listening={isListening}
+                      />
+
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearChat}
+                          className="w-full"
+                          disabled={messages.length === 0}
                         >
-                          <div className={'max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 ' + messageClass}>
-                            {message.role === 'assistant' && message.model && !message.isError && (
-                              <div className="text-xs text-gray-500 mb-1">
-                                {models.find(m => m.id === message.model)?.name || message.model}
-                                {message.isStreaming && ' • Streaming...'}
-                                {message.cost !== undefined && (
-                                  <span className="ml-2 text-gray-400">
-                                    Cost: ${message.cost.toFixed(6)} 
-                                    ({message.tokens?.input}/{message.tokens?.output} tokens)
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            <div className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                              {message.isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse"></span>}
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Limpiar Chat
+                        </Button>
+                      </div>
+                    </Card>
+
+                    {/* Model Info */}
+                    {selectedModelInfo && (
+                      <Card padding="md">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                          Información del Modelo
+                        </h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Proveedor:</span>
+                            <span className="font-medium text-gray-900">
+                              {selectedModelInfo.provider}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Modelo:</span>
+                            <span className="font-medium text-gray-900">
+                              {selectedModelInfo.name}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-gray-200">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Input:</span>
+                              <span className="font-mono text-xs text-gray-900">
+                                ${selectedModelInfo.inputPrice.toFixed(4)}/1K
+                              </span>
+                            </div>
+                            <div className="flex justify-between mt-1">
+                              <span className="text-gray-600">Output:</span>
+                              <span className="font-mono text-xs text-gray-900">
+                                ${selectedModelInfo.outputPrice.toFixed(4)}/1K
+                              </span>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                )}
-              </div>
-            </div>
+                      </Card>
+                    )}
 
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="relative">
-                  <textarea
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type your message or use voice..."
-                    className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
-                    rows="8"
-                    disabled={isLoading}
-                  />
-                  {isListening && (
-                    <div className="absolute top-2 right-2 flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-red-500 font-medium">Escuchando...</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex space-x-2 mt-3">
-                  <button
-                    onClick={toggleRecording}
-                    disabled={isLoading}
-                    className={'px-4 py-2 rounded-lg font-medium transition-all ' +
-                      (isRecording
-                        ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300')
-                    }
-                    title={isRecording ? 'Stop recording' : 'Start voice input'}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim()}
-                    className={'flex-1 py-2 px-4 rounded-lg font-medium transition-colors ' +
-                      (isLoading || !inputMessage.trim()
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-gray-800')
-                    }
-                  >
-                    {isStreaming ? 'Streaming...' : isLoading ? 'Sending...' : 'Send'}
-                  </button>
-                  <button
-                    onClick={clearChat}
-                    className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="text-xs text-gray-500">
-                    <div>Current Model:</div>
-                    <div className="text-gray-900 font-medium mt-1">
-                      {models.find(m => m.id === selectedModel)?.name}
-                    </div>
-                    <div className="text-gray-400 mt-1">
-                      Input: ${models.find(m => m.id === selectedModel)?.inputPrice}/1K
-                    </div>
-                    <div className="text-gray-400">
-                      Output: ${models.find(m => m.id === selectedModel)?.outputPrice}/1K
-                    </div>
+                    {/* Quick Tips */}
+                    <Card padding="md" className="bg-blue-50 border-blue-200">
+                      <h3 className="text-sm font-semibold text-blue-900 mb-2">
+                        💡 Consejos Rápidos
+                      </h3>
+                      <ul className="text-xs text-blue-800 space-y-1">
+                        <li>• Enter para enviar</li>
+                        <li>• Shift + Enter para nueva línea</li>
+                        <li>• Click en 🎤 para entrada de voz</li>
+                        <li>• Los costos se calculan automáticamente</li>
+                      </ul>
+                    </Card>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Container>
         </div>
       </div>
-      
-      <style jsx global>{`
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .delay-200 {
-          animation-delay: 0.2s;
-        }
-        
-        .delay-400 {
-          animation-delay: 0.4s;
-        }
-      `}</style>
     </>
   );
 }
