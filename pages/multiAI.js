@@ -259,49 +259,71 @@ export default function MultiAIChat() {
   return (
     <>
       <Head>
-        <title>Brain Co-Lab - Multi AI</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <title>Brain Co-Lab - Multi AI Chat</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       </Head>
 
-      <div className="min-h-screen bg-white text-gray-900">
-        <div className="max-w-7xl mx-auto p-4">
-          <div className="mb-6 flex justify-between items-start border-b border-gray-200 pb-4">
-            <div>
-              <h1 className="text-2xl font-light">Brain Co-Lab</h1>
-              <p className="text-sm text-gray-500 mt-1">Multi-AI Interface {isStreaming && '• Streaming...'}</p>
-            </div>
-            <div className="text-right">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
-                <div className="text-xs text-gray-500">AI Gateway Balance</div>
-                <div className="text-lg font-semibold">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+        {/* Header */}
+        <header className="glass border-b border-gray-200/50 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex justify-between items-center">
+              <div className="animate-fade-in">
+                <h1 className="text-2xl font-bold">
+                  <span className="text-3xl">🧠</span>
+                  <span className="ml-2 gradient-text">Brain Co-Lab</span>
+                </h1>
+                <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+                  Multi-AI Interface
+                  {isStreaming && (
+                    <span className="flex items-center gap-1 text-blue-600 animate-pulse">
+                      <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                      Streaming...
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* Credits Display */}
+              <div className="card px-5 py-3 animate-fade-in delay-200">
+                <div className="text-xs text-gray-500 font-medium">AI Gateway Balance</div>
+                <div className="text-xl font-bold gradient-text mt-1">
                   ${typeof credits === 'number' ? credits.toFixed(2) : '0.00'}
                 </div>
                 {totalCost > 0 && (
                   <div className="text-xs text-gray-500 mt-1">
-                    Session: -${totalCost.toFixed(4)}
+                    Session: <span className="text-red-600 font-semibold">-${totalCost.toFixed(4)}</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
+        </header>
 
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          {/* Model Selector */}
+          <div className="mb-6 animate-fade-in-up">
+            <h2 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">
+              Select AI Model
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {AI_MODELS.map((model) => {
                 const isSelected = selectedModel === model.id;
-                const colorClass = isSelected ? getProviderColor(model.provider) : 'border-gray-200 hover:border-gray-300 bg-white';
+                const providerColor = getProviderColor(model.provider);
 
                 return (
                   <button
                     key={model.id}
                     onClick={() => setSelectedModel(model.id)}
                     disabled={isLoading}
-                    className={'p-3 rounded-lg border-2 transition-all ' + colorClass + (isLoading ? ' opacity-50 cursor-not-allowed' : '')}
+                    className={`model-btn group ${isSelected ? `model-btn-selected ${providerColor}` : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <div className="text-xs font-medium text-gray-500">{model.provider}</div>
-                    <div className="text-sm font-semibold">{model.name}</div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      ${model.inputPrice}/${model.outputPrice}
+                    <div className="text-xs font-medium text-gray-500 mb-1">{model.provider}</div>
+                    <div className="text-sm font-bold text-gray-900">{model.name}</div>
+                    <div className="text-xs text-gray-400 mt-2 flex items-center justify-between">
+                      <span>${model.inputPrice}</span>
+                      <span className="text-gray-300">/</span>
+                      <span>${model.outputPrice}</span>
                     </div>
                   </button>
                 );
@@ -309,88 +331,112 @@ export default function MultiAIChat() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="h-96 lg:h-[500px] overflow-y-auto p-4">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                    <div className="text-center">
-                      <div className="text-4xl mb-3">🤖</div>
-                      <p className="font-light">Select a model and start chatting</p>
-                      <p className="text-xs mt-2">Now with real-time streaming!</p>
+          {/* Chat Interface */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Messages Area */}
+            <div className="lg:col-span-2">
+              <div className="card h-[calc(100vh-340px)] min-h-[500px] overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-y-auto p-6">
+                  {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center animate-fade-in">
+                        <div className="text-6xl mb-6">💬</div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                          Start a conversation
+                        </h3>
+                        <p className="text-gray-500 max-w-sm mx-auto">
+                          Select an AI model above and type your message below to begin
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map((message, index) => {
-                      const isUser = message.role === 'user';
-                      const messageClass = isUser
-                        ? 'bg-gray-900 text-white'
-                        : message.isError
-                        ? 'bg-red-50 text-red-700 border border-red-200'
-                        : 'bg-white border border-gray-200';
-                      const messageModel = message.model ? getModelById(message.model) : null;
+                  ) : (
+                    <div className="space-y-6">
+                      {messages.map((message, index) => {
+                        const isUser = message.role === 'user';
+                        const messageModel = message.model ? getModelById(message.model) : null;
 
-                      return (
-                        <div
-                          key={index}
-                          className={'flex ' + (isUser ? 'justify-end' : 'justify-start')}
-                        >
-                          <div className={'max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 ' + messageClass}>
-                            {message.role === 'assistant' && messageModel && !message.isError && (
-                              <div className="text-xs text-gray-500 mb-1">
-                                {messageModel.name}
-                                {message.isStreaming && ' • Streaming...'}
-                                {message.cost !== undefined && (
-                                  <span className="ml-2 text-gray-400">
-                                    Cost: ${message.cost.toFixed(6)}
-                                    ({message.tokens?.input}/{message.tokens?.output} tokens)
-                                  </span>
+                        return (
+                          <div
+                            key={index}
+                            className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div className={isUser ? 'message-user' : message.isError ? 'message-error' : 'message-assistant'}>
+                              {message.role === 'assistant' && messageModel && !message.isError && (
+                                <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-gray-700">
+                                      {messageModel.name}
+                                    </span>
+                                    {message.isStreaming && (
+                                      <span className="flex items-center gap-1 text-blue-600 text-xs">
+                                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></span>
+                                        Streaming
+                                      </span>
+                                    )}
+                                  </div>
+                                  {message.cost !== undefined && (
+                                    <span className="text-xs text-gray-400">
+                                      ${message.cost.toFixed(6)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {message.content}
+                                {message.isStreaming && (
+                                  <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse"></span>
                                 )}
                               </div>
-                            )}
-                            <div className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                              {message.isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse"></span>}
+                              {message.tokens && (
+                                <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100">
+                                  {message.tokens.input} in / {message.tokens.output} out
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                )}
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* Input Area */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="relative">
+              <div className="card p-6 sticky top-28">
+                <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wider">
+                  Your Message
+                </h3>
+
+                <div className="relative mb-4">
                   <textarea
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your message or use voice..."
-                    className="w-full bg-gray-50 text-gray-900 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-400 resize-none"
+                    className="input-primary resize-none"
                     rows="8"
                     disabled={isLoading}
                   />
                   {isListening && (
-                    <div className="absolute top-2 right-2 flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-red-500 font-medium">Escuchando...</span>
+                    <div className="absolute top-3 right-3 flex items-center gap-2 glass-dark px-3 py-1.5 rounded-full animate-pulse">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-xs text-white font-medium">Listening...</span>
                     </div>
                   )}
                 </div>
-                <div className="flex space-x-2 mt-3">
+
+                <div className="flex gap-2 mb-6">
                   <button
                     onClick={toggleRecording}
                     disabled={isLoading}
-                    className={'px-4 py-2 rounded-lg font-medium transition-all ' +
-                      (isRecording
+                    className={`px-4 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                      isRecording
                         ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300')
-                    }
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={isRecording ? 'Stop recording' : 'Start voice input'}
                   >
                     <svg
@@ -406,35 +452,54 @@ export default function MultiAIChat() {
                       />
                     </svg>
                   </button>
+
                   <button
                     onClick={handleSendMessage}
                     disabled={isLoading || !inputMessage.trim()}
-                    className={'flex-1 py-2 px-4 rounded-lg font-medium transition-colors ' +
-                      (isLoading || !inputMessage.trim()
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-900 text-white hover:bg-gray-800')
-                    }
+                    className="btn-primary flex-1"
                   >
-                    {isStreaming ? 'Streaming...' : isLoading ? 'Sending...' : 'Send'}
+                    {isStreaming ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                        Streaming...
+                      </span>
+                    ) : isLoading ? (
+                      'Sending...'
+                    ) : (
+                      'Send Message'
+                    )}
                   </button>
+
                   <button
                     onClick={clearChat}
-                    className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                    className="px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all font-semibold"
                   >
                     Clear
                   </button>
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="text-xs text-gray-500">
-                    <div>Current Model:</div>
-                    <div className="text-gray-900 font-medium mt-1">
+
+                {/* Current Model Info */}
+                <div className="pt-6 border-t border-gray-100">
+                  <div className="text-xs text-gray-500 mb-2 uppercase tracking-wider font-semibold">
+                    Current Model
+                  </div>
+                  <div className="card bg-gradient-to-br from-gray-50 to-white p-4">
+                    <div className="text-lg font-bold text-gray-900 mb-2">
                       {currentModel?.name || 'Unknown'}
                     </div>
-                    <div className="text-gray-400 mt-1">
-                      Input: ${currentModel?.inputPrice || 0}/1K
-                    </div>
-                    <div className="text-gray-400">
-                      Output: ${currentModel?.outputPrice || 0}/1K
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div className="flex justify-between">
+                        <span>Provider:</span>
+                        <span className="font-semibold">{currentModel?.provider}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Input:</span>
+                        <span className="font-semibold">${currentModel?.inputPrice || 0}/1K</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Output:</span>
+                        <span className="font-semibold">${currentModel?.outputPrice || 0}/1K</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -443,22 +508,6 @@ export default function MultiAIChat() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-          -webkit-font-smoothing: antialiased;
-          -moz-osx-font-smoothing: grayscale;
-        }
-
-        .delay-200 {
-          animation-delay: 0.2s;
-        }
-
-        .delay-400 {
-          animation-delay: 0.4s;
-        }
-      `}</style>
     </>
   );
 }
