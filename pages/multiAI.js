@@ -16,33 +16,33 @@ export default function MultiAIChat() {
   const recognitionRef = useRef(null);
 
   const models = [
-    // Anthropic
+    // Anthropic - IDs verificados de tabla Vercel AI Gateway
     { id: 'anthropic/claude-sonnet-4.5', name: 'Sonnet 4.5', provider: 'Anthropic', context: '200K', inputPrice: 0.003, outputPrice: 0.015 },
     { id: 'anthropic/claude-haiku-4.5', name: 'Haiku 4.5', provider: 'Anthropic', context: '200K', inputPrice: 0.001, outputPrice: 0.005 },
     { id: 'anthropic/claude-opus-4.1', name: 'Opus 4.1', provider: 'Anthropic', context: '200K', inputPrice: 0.015, outputPrice: 0.075 },
-    // Google
+    // Google - IDs verificados
     { id: 'google/gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'Google', context: '1M', inputPrice: 0.002, outputPrice: 0.012 },
     { id: 'google/gemini-3-pro-image', name: 'Gemini 3 Img', provider: 'Google', context: '66K', inputPrice: 0.002, outputPrice: 0.120 },
-    // OpenAI
+    // OpenAI - IDs verificados
     { id: 'openai/gpt-5.1-thinking', name: 'GPT-5.1 Think', provider: 'OpenAI', context: '400K', inputPrice: 0.00125, outputPrice: 0.010 },
     { id: 'openai/gpt-5.1-instant', name: 'GPT-5.1 Inst', provider: 'OpenAI', context: '128K', inputPrice: 0.00125, outputPrice: 0.010 },
-    // Moonshot AI
+    // Moonshot AI - IDs verificados
     { id: 'moonshotai/kimi-k2-0905', name: 'Kimi K2', provider: 'Moonshot AI', context: '131K', inputPrice: 0.0006, outputPrice: 0.0025 },
     { id: 'moonshotai/kimi-k2-thinking', name: 'Kimi Think', provider: 'Moonshot AI', context: '262K', inputPrice: 0.0006, outputPrice: 0.0025 },
     { id: 'moonshotai/kimi-k2-thinking-turbo', name: 'Kimi Turbo', provider: 'Moonshot AI', context: '262K', inputPrice: 0.00115, outputPrice: 0.008 },
-    // Perplexity
+    // Perplexity - IDs verificados
     { id: 'perplexity/sonar-pro', name: 'Sonar Pro', provider: 'Perplexity', context: '200K', inputPrice: 0.003, outputPrice: 0.015 },
     { id: 'perplexity/sonar-reasoning-pro', name: 'Sonar Reason', provider: 'Perplexity', context: '127K', inputPrice: 0.002, outputPrice: 0.008 },
-    // xAI
+    // xAI - IDs verificados
     { id: 'xai/grok-4.1-fast-non-reasoning', name: 'Grok 4.1', provider: 'xAI', context: '2M', inputPrice: 0.0002, outputPrice: 0.0005 },
     { id: 'xai/grok-4.1-fast-reasoning', name: 'Grok Reason', provider: 'xAI', context: '2M', inputPrice: 0.0002, outputPrice: 0.0005 },
-    // DeepSeek
+    // DeepSeek - IDs verificados
     { id: 'deepseek/deepseek-v3.2-exp-thinking', name: 'DS Think', provider: 'DeepSeek', context: '164K', inputPrice: 0.00028, outputPrice: 0.00042 },
     { id: 'deepseek/deepseek-v3.2-exp', name: 'DS v3.2', provider: 'DeepSeek', context: '164K', inputPrice: 0.00027, outputPrice: 0.00040 },
-    // Mistral
+    // Mistral - IDs verificados
     { id: 'mistral/ministral-3b', name: 'Ministral 3B', provider: 'Mistral', context: '128K', inputPrice: 0.00004, outputPrice: 0.00004 },
     { id: 'mistral/mistral-large', name: 'Mistral L', provider: 'Mistral', context: '32K', inputPrice: 0.002, outputPrice: 0.006 },
-    // Alibaba
+    // Alibaba - IDs verificados
     { id: 'alibaba/qwen3-max-preview', name: 'Qwen3 Max', provider: 'Alibaba', context: '262K', inputPrice: 0.0012, outputPrice: 0.006 },
   ];
 
@@ -167,6 +167,9 @@ export default function MultiAIChat() {
     setInputMessage('');
     setIsLoading(true);
     setIsStreaming(true);
+
+    // Log del modelo seleccionado para debugging
+    console.log('🔍 Modelo seleccionado:', selectedModel);
 
     // Crear mensaje placeholder para el streaming
     const assistantMessageIndex = updatedMessages.length;
@@ -399,6 +402,7 @@ export default function MultiAIChat() {
                             {message.role === 'assistant' && message.model && !message.isError && (
                               <div className="text-xs text-gray-500 mb-1">
                                 {models.find(m => m.id === message.model)?.name || message.model}
+                                {' '} <span className="text-gray-400">({message.model})</span>
                                 {message.isStreaming && ' • Streaming...'}
                                 {message.cost !== undefined && (
                                   <span className="ml-2 text-gray-400">
@@ -488,6 +492,9 @@ export default function MultiAIChat() {
                     <div>Current Model:</div>
                     <div className="text-gray-900 font-medium mt-1">
                       {models.find(m => m.id === selectedModel)?.name}
+                    </div>
+                    <div className="text-gray-400 mt-1 text-[10px] font-mono">
+                      ID: {selectedModel}
                     </div>
                     <div className="text-gray-400 mt-1">
                       Context: {models.find(m => m.id === selectedModel)?.context}
