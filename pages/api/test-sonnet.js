@@ -12,6 +12,16 @@ export default async function handler(req, res) {
   const modelId = 'anthropic/claude-sonnet-4.5';
   const aiGatewayUrl = 'https://ai-gateway.vercel.sh/v1/chat/completions';
 
+  // Use the same API key as chat.js
+  const apiKey = process.env.AI_GATEWAY_API_KEY;
+  
+  if (!apiKey) {
+    return res.status(500).json({ 
+      error: 'AI Gateway API key not configured',
+      details: 'Please add AI_GATEWAY_API_KEY to your environment variables in Vercel.' 
+    });
+  }
+
   const requestPayload = {
     model: modelId,
     messages: [
@@ -29,7 +39,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.VERCEL_AI_GATEWAY_TOKEN}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestPayload),
     });
