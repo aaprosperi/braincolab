@@ -4,7 +4,7 @@ import Head from 'next/head';
 export default function MultiAIChat() {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+  const [selectedModel, setSelectedModel] = useState('anthropic/claude-sonnet-4.5');
   const [isLoading, setIsLoading] = useState(false);
   const [credits, setCredits] = useState(null);
   const [totalCost, setTotalCost] = useState(0);
@@ -16,31 +16,34 @@ export default function MultiAIChat() {
   const recognitionRef = useRef(null);
 
   const models = [
-    // OpenAI
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5', provider: 'OpenAI', inputPrice: 0.0005, outputPrice: 0.0015 },
-    { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', inputPrice: 0.03, outputPrice: 0.06 },
-    { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', inputPrice: 0.0025, outputPrice: 0.01 },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', inputPrice: 0.00015, outputPrice: 0.0006 },
     // Anthropic
-    { id: 'anthropic/claude-3-haiku-20240307', name: 'Haiku', provider: 'Anthropic', inputPrice: 0.00025, outputPrice: 0.00125 },
     { id: 'anthropic/claude-sonnet-4.5', name: 'Sonnet 4.5', provider: 'Anthropic', inputPrice: 0.003, outputPrice: 0.015 },
+    { id: 'anthropic/claude-haiku-4.5', name: 'Haiku 4.5', provider: 'Anthropic', inputPrice: 0.001, outputPrice: 0.005 },
     { id: 'anthropic/claude-opus-4.1', name: 'Opus 4.1', provider: 'Anthropic', inputPrice: 0.015, outputPrice: 0.075 },
     // Google
-    { id: 'google/gemini-1.5-flash', name: 'Gemini Flash', provider: 'Google', inputPrice: 0.000075, outputPrice: 0.0003 },
-    { id: 'google/gemini-1.5-pro', name: 'Gemini Pro', provider: 'Google', inputPrice: 0.00125, outputPrice: 0.005 },
-    { id: 'google/gemini-2.0-flash-exp', name: 'Gemini 2.0', provider: 'Google', inputPrice: 0, outputPrice: 0 },
-    // Meta
-    { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3', provider: 'Meta', inputPrice: 0.00018, outputPrice: 0.00018 },
-    // Mistral
-    { id: 'mistral/mistral-large-latest', name: 'Mistral L', provider: 'Mistral', inputPrice: 0.002, outputPrice: 0.006 },
-    { id: 'mistral/mistral-small-latest', name: 'Mistral S', provider: 'Mistral', inputPrice: 0.0002, outputPrice: 0.0006 },
-    // xAI
-    { id: 'xai/grok-2-1212', name: 'Grok 2', provider: 'xAI', inputPrice: 0.002, outputPrice: 0.01 },
-    // DeepSeek
-    { id: 'deepseek/deepseek-chat', name: 'DeepSeek', provider: 'DeepSeek', inputPrice: 0.00014, outputPrice: 0.00028 },
+    { id: 'google/gemini-3-pro-preview', name: 'Gemini 3 Pro', provider: 'Google', inputPrice: 0.002, outputPrice: 0.012 },
+    { id: 'google/gemini-3-pro-image', name: 'Gemini 3 Img', provider: 'Google', inputPrice: 0.002, outputPrice: 0.120 },
+    // OpenAI
+    { id: 'openai/gpt-5.1-thinking', name: 'GPT-5.1 Think', provider: 'OpenAI', inputPrice: 0.00125, outputPrice: 0.010 },
+    { id: 'openai/gpt-5.1-instant', name: 'GPT-5.1 Inst', provider: 'OpenAI', inputPrice: 0.00125, outputPrice: 0.010 },
+    // Moonshot AI
+    { id: 'moonshotai/kimi-k2-0905', name: 'Kimi K2', provider: 'Moonshot AI', inputPrice: 0.0006, outputPrice: 0.0025 },
+    { id: 'moonshotai/kimi-k2-thinking', name: 'Kimi Think', provider: 'Moonshot AI', inputPrice: 0.0006, outputPrice: 0.0025 },
+    { id: 'moonshotai/kimi-k2-thinking-turbo', name: 'Kimi Turbo', provider: 'Moonshot AI', inputPrice: 0.00115, outputPrice: 0.008 },
     // Perplexity
-    { id: 'perplexity/llama-3.1-sonar-small-128k-online', name: 'Sonar S', provider: 'Perplexity', inputPrice: 0.0002, outputPrice: 0.0002 },
-    { id: 'perplexity/llama-3.1-sonar-large-128k-online', name: 'Sonar L', provider: 'Perplexity', inputPrice: 0.001, outputPrice: 0.001 },
+    { id: 'perplexity/sonar-pro', name: 'Sonar Pro', provider: 'Perplexity', inputPrice: 0.003, outputPrice: 0.015 },
+    { id: 'perplexity/sonar-reasoning-pro', name: 'Sonar Reason', provider: 'Perplexity', inputPrice: 0.002, outputPrice: 0.008 },
+    // xAI
+    { id: 'xai/grok-4.1-fast-non-reasoning', name: 'Grok 4.1', provider: 'xAI', inputPrice: 0.0002, outputPrice: 0.0005 },
+    { id: 'xai/grok-4.1-fast-reasoning', name: 'Grok Reason', provider: 'xAI', inputPrice: 0.0002, outputPrice: 0.0005 },
+    // DeepSeek
+    { id: 'deepseek/deepseek-v3.2-exp-thinking', name: 'DS Think', provider: 'DeepSeek', inputPrice: 0.00028, outputPrice: 0.00042 },
+    { id: 'deepseek/deepseek-v3.2-exp', name: 'DS v3.2', provider: 'DeepSeek', inputPrice: 0.00027, outputPrice: 0.00040 },
+    // Mistral
+    { id: 'mistral/ministral-3b', name: 'Ministral 3B', provider: 'Mistral', inputPrice: 0.00004, outputPrice: 0.00004 },
+    { id: 'mistral/mistral-large', name: 'Mistral L', provider: 'Mistral', inputPrice: 0.002, outputPrice: 0.006 },
+    // Alibaba
+    { id: 'alibaba/qwen3-max-preview', name: 'Qwen3 Max', provider: 'Alibaba', inputPrice: 0.0012, outputPrice: 0.006 },
   ];
 
   useEffect(() => {
@@ -300,11 +303,12 @@ export default function MultiAIChat() {
       'OpenAI': 'border-emerald-500 bg-emerald-50 text-emerald-700',
       'Anthropic': 'border-orange-500 bg-orange-50 text-orange-700',
       'Google': 'border-blue-500 bg-blue-50 text-blue-700',
-      'Meta': 'border-violet-500 bg-violet-50 text-violet-700',
       'Mistral': 'border-rose-500 bg-rose-50 text-rose-700',
       'xAI': 'border-gray-500 bg-gray-50 text-gray-700',
       'Perplexity': 'border-cyan-500 bg-cyan-50 text-cyan-700',
-      'DeepSeek': 'border-indigo-500 bg-indigo-50 text-indigo-700'
+      'DeepSeek': 'border-indigo-500 bg-indigo-50 text-indigo-700',
+      'Moonshot AI': 'border-purple-500 bg-purple-50 text-purple-700',
+      'Alibaba': 'border-amber-500 bg-amber-50 text-amber-700'
     };
     return colors[provider] || 'border-gray-500 bg-gray-50 text-gray-700';
   };
