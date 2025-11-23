@@ -283,7 +283,7 @@ export default function InternalLab() {
       </Head>
 
       <div className="min-h-screen bg-gray-50 text-gray-900">
-        <div className="max-w-[1600px] mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-6" style={{maxWidth: '1600px'}}>
           <div className="mb-8 border-b border-gray-300 pb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -305,7 +305,7 @@ export default function InternalLab() {
                 onClick={() => setTestMode('single')}
                 className={'flex-1 py-3 px-6 rounded-lg font-semibold transition-all ' + (testMode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
               >
-                �� Single Model Test
+                🎯 Single Model Test
               </button>
               <button
                 onClick={() => setTestMode('all')}
@@ -433,7 +433,7 @@ export default function InternalLab() {
                             <td className={'p-3 border-l border-gray-200 ' + getConfidenceColor(result.analysis && result.analysis.confidence.capabilities)}>
                               <div className="flex items-start">
                                 <span className="mr-2">{getConfidenceIcon(result.analysis && result.analysis.confidence.capabilities)}</span>
-                                <span className="text-xs line-clamp-2">{result.analysis && result.analysis.answers.capabilities}</span>
+                                <span className="text-xs" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{result.analysis && result.analysis.answers.capabilities}</span>
                               </div>
                             </td>
                             <td className="p-3 border-l border-gray-200 text-center text-xs text-gray-500">
@@ -459,18 +459,6 @@ export default function InternalLab() {
           )}
         </div>
       </div>
-
-      <style jsx global>{\`
-        body {
-          font-family: 'Inter', sans-serif;
-        }
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      \`}</style>
     </>
   );
 }
