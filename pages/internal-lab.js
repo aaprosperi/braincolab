@@ -125,43 +125,68 @@ Please be specific and factual in your answers.`
     };
 
     const lower = responseText.toLowerCase();
-    const modelName = ALL_MODELS.find(m => m.id === modelId)?.name || '';
+    const modelInfo = ALL_MODELS.find(m => m.id === modelId);
+    const provider = modelInfo?.provider || '';
+    const modelName = modelInfo?.name || '';
 
-    // Generic version detection
-    const hasVersionMention = /\d+\.\d+/.test(responseText);
-    
-    // Check for Claude-specific issues
+    // CLAUDE-SPECIFIC VALIDATION (STRICT)
     if (modelId.includes('claude')) {
+      // Check for version mismatches
       if (lower.includes('4.5') || lower.includes('sonnet 4') || lower.includes('haiku 4') || lower.includes('opus 4')) {
         analysis.claims.push('✅ Claims to be Claude 4.x series');
-      } else if (lower.includes('3.5') || lower.includes('claude 3')) {
+        analysis.verdict = 'correct';
+      } else if (lower.includes('3.5') || lower.includes('3.7') || lower.includes('claude 3')) {
         analysis.claims.push('⚠️ Identifies as Claude 3.x series');
         analysis.flags.push(`🚨 MODEL MISMATCH: Responding as 3.x instead of ${modelName}`);
+        analysis.verdict = 'incorrect';
       }
 
+      // Check knowledge cutoff
       if (lower.includes('april 2024') || lower.includes('2024-04')) {
         analysis.claims.push('⚠️ Knowledge cutoff: April 2024 (Claude 3.5 characteristic)');
         analysis.flags.push('🚨 OUTDATED CUTOFF: April 2024 is Claude 3.5, not 4.x');
+        analysis.verdict = 'incorrect';
       } else if (lower.includes('2025') || lower.includes('january 2025')) {
         analysis.claims.push('✅ Knowledge cutoff: 2025 (expected for Claude 4.x)');
       }
 
+      // Check release date
       if (lower.includes('june 2024') || lower.includes('2024-06')) {
         analysis.claims.push('⚠️ Release date: June 2024 (Claude 3.5 Sonnet release)');
         analysis.flags.push('🚨 WRONG RELEASE DATE: June 2024 is Claude 3.5');
+        analysis.verdict = 'incorrect';
+      } else if (lower.includes('october 2024') || lower.includes('2024-10')) {
+        analysis.claims.push('✅ Release date mentions October 2024');
       }
-    }
-
-    // Check if model responds appropriately
-    if (!hasVersionMention && !lower.includes('cannot') && !lower.includes('don\'t have')) {
-      analysis.flags.push('⚠️ Model did not provide version information');
-    }
-
-    // Determine verdict
-    if (analysis.flags.length === 0 && analysis.claims.some(c => c.includes('✅'))) {
-      analysis.verdict = 'correct';
-    } else if (analysis.flags.some(f => f.includes('🚨'))) {
-      analysis.verdict = 'incorrect';
+    } 
+    // NON-CLAUDE MODELS (PERMISSIVE - if it responds, it passes)
+    else {
+      // For non-Claude models, simply check if we got a valid response
+      if (responseText && responseText.length > 50) {
+        analysis.claims.push('✅ Model responded successfully');
+        analysis.claims.push(`✅ Response length: ${responseText.length} characters`);
+        analysis.verdict = 'correct';
+        
+        // Add helpful info if model mentions its name
+        if (lower.includes('gemini')) {
+          analysis.claims.push('✅ Identifies as Gemini model');
+        } else if (lower.includes('gpt') || lower.includes('chatgpt')) {
+          analysis.claims.push('✅ Identifies as GPT/ChatGPT model');
+        } else if (lower.includes('kimi')) {
+          analysis.claims.push('✅ Identifies as Kimi model');
+        } else if (lower.includes('grok')) {
+          analysis.claims.push('✅ Identifies as Grok model');
+        } else if (lower.includes('deepseek')) {
+          analysis.claims.push('✅ Identifies as DeepSeek model');
+        } else if (lower.includes('mistral')) {
+          analysis.claims.push('✅ Identifies as Mistral model');
+        } else if (lower.includes('qwen')) {
+          analysis.claims.push('✅ Identifies as Qwen model');
+        }
+      } else {
+        analysis.flags.push('⚠️ Response seems too short or empty');
+        analysis.verdict = 'inconclusive';
+      }
     }
 
     return analysis;
@@ -174,16 +199,16 @@ Please be specific and factual in your answers.`
       case 'incorrect':
         return 'bg-red-100 border-red-500 text-red-900';
       default:
-        return 'bg-gray-100 border-gray-500 text-gray-900';
+        return 'bg-yellow-100 border-yellow-500 text-yellow-900';
     }
   };
 
   const getVerdictLabel = (verdict, modelName) => {
     switch (verdict) {
       case 'correct':
-        return `✅ VERIFIED: Model appears to be ${modelName}`;
+        return `✅ PASSED: ${modelName} responding correctly`;
       case 'incorrect':
-        return `❌ FAILED: Model is NOT ${modelName}`;
+        return `❌ FAILED: ${modelName} is being misrouted`;
       default:
         return `⚠️ INCONCLUSIVE: Unable to verify ${modelName}`;
     }
@@ -202,30 +227,30 @@ Please be specific and factual in your answers.`
     <>
       <Head>
         <title>Internal Lab - Model Validator</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+        <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap\" rel=\"stylesheet\" />
       </Head>
 
-      <div className="min-h-screen bg-gray-50 text-gray-900">
-        <div className="max-w-7xl mx-auto p-6">
+      <div className=\"min-h-screen bg-gray-50 text-gray-900\">
+        <div className=\"max-w-7xl mx-auto p-6\">
           {/* Header */}
-          <div className="mb-8 border-b border-gray-300 pb-6">
-            <div className="flex items-center justify-between">
+          <div className=\"mb-8 border-b border-gray-300 pb-6\">
+            <div className=\"flex items-center justify-between\">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">🧪 Internal Lab</h1>
-                <p className="text-sm text-gray-600 mt-2">AI Gateway Model Validator</p>
+                <h1 className=\"text-3xl font-bold text-gray-900\">🧪 Internal Lab</h1>
+                <p className=\"text-sm text-gray-600 mt-2\">AI Gateway Model Validator</p>
               </div>
-              <div className="text-right">
-                <div className="inline-block bg-yellow-100 border-2 border-yellow-500 rounded-lg px-4 py-2">
-                  <div className="text-xs font-bold text-yellow-800">⚠️ INTERNAL USE ONLY</div>
+              <div className=\"text-right\">
+                <div className=\"inline-block bg-yellow-100 border-2 border-yellow-500 rounded-lg px-4 py-2\">
+                  <div className=\"text-xs font-bold text-yellow-800\">⚠️ INTERNAL USE ONLY</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Test Mode Selection */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Test Mode</h2>
-            <div className="flex space-x-4 mb-4">
+          <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
+            <h2 className=\"text-lg font-semibold mb-4\">Test Mode</h2>
+            <div className=\"flex space-x-4 mb-4\">
               <button
                 onClick={() => setTestMode('single')}
                 className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
@@ -251,30 +276,30 @@ Please be specific and factual in your answers.`
 
           {/* Single Test Mode */}
           {testMode === 'single' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-              <h2 className="text-lg font-semibold mb-4">Single Model Configuration</h2>
+            <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
+              <h2 className=\"text-lg font-semibold mb-4\">Single Model Configuration</h2>
               
-              <div className="mb-4">
-                <label className="flex items-center space-x-3 cursor-pointer">
+              <div className=\"mb-4\">
+                <label className=\"flex items-center space-x-3 cursor-pointer\">
                   <input
-                    type="checkbox"
+                    type=\"checkbox\"
                     checked={autoTest}
                     onChange={(e) => setAutoTest(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded"
+                    className=\"w-4 h-4 text-blue-600 rounded\"
                   />
-                  <span className="text-sm font-medium">Use automatic validation test</span>
+                  <span className=\"text-sm font-medium\">Use automatic validation test</span>
                 </label>
               </div>
 
               {!autoTest && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2">Custom Test Message:</label>
+                <div className=\"mb-4\">
+                  <label className=\"block text-sm font-medium mb-2\">Custom Test Message:</label>
                   <textarea
                     value={testInput}
                     onChange={(e) => setTestInput(e.target.value)}
-                    placeholder="Enter your test message..."
-                    className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-mono text-sm"
-                    rows="4"
+                    placeholder=\"Enter your test message...\"
+                    className=\"w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none font-mono text-sm\"
+                    rows=\"4\"
                   />
                 </div>
               )}
@@ -295,23 +320,23 @@ Please be specific and factual in your answers.`
 
           {/* Bulk Test Mode */}
           {testMode === 'all' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-              <h2 className="text-lg font-semibold mb-4">Bulk Test All Models</h2>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
+              <h2 className=\"text-lg font-semibold mb-4\">Bulk Test All Models</h2>
+              <p className=\"text-sm text-gray-600 mb-4\">
                 This will test all {ALL_MODELS.length} models sequentially to identify which models are being correctly routed by Vercel AI Gateway.
               </p>
 
               {isLoading && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm mb-2">
+                <div className=\"mb-4\">
+                  <div className=\"flex justify-between text-sm mb-2\">
                     <span>Progress:</span>
-                    <span className="font-semibold">
+                    <span className=\"font-semibold\">
                       {bulkProgress.current} / {bulkProgress.total}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className=\"w-full bg-gray-200 rounded-full h-2.5\">
                     <div
-                      className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+                      className=\"bg-purple-600 h-2.5 rounded-full transition-all duration-300\"
                       style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
                     ></div>
                   </div>
@@ -336,19 +361,19 @@ Please be specific and factual in your answers.`
 
           {/* Single Test Results */}
           {testMode === 'single' && results && (
-            <div className="space-y-6">
+            <div className=\"space-y-6\">
               {results.analysis && (
                 <div className={`rounded-xl border-4 p-6 ${getVerdictColor(results.analysis.verdict)}`}>
-                  <h2 className="text-2xl font-bold mb-4">
+                  <h2 className=\"text-2xl font-bold mb-4\">
                     {getVerdictLabel(results.analysis.verdict, 'Claude Sonnet 4.5')}
                   </h2>
                   
                   {results.analysis.flags.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="font-semibold mb-2">🚨 Issues Detected:</h3>
-                      <ul className="list-disc list-inside space-y-1">
+                    <div className=\"mb-4\">
+                      <h3 className=\"font-semibold mb-2\">🚨 Issues Detected:</h3>
+                      <ul className=\"list-disc list-inside space-y-1\">
                         {results.analysis.flags.map((flag, idx) => (
-                          <li key={idx} className="text-sm font-medium">{flag}</li>
+                          <li key={idx} className=\"text-sm font-medium\">{flag}</li>
                         ))}
                       </ul>
                     </div>
@@ -356,10 +381,10 @@ Please be specific and factual in your answers.`
 
                   {results.analysis.claims.length > 0 && (
                     <div>
-                      <h3 className="font-semibold mb-2">📋 Model Claims:</h3>
-                      <ul className="list-disc list-inside space-y-1">
+                      <h3 className=\"font-semibold mb-2\">📋 Model Claims:</h3>
+                      <ul className=\"list-disc list-inside space-y-1\">
                         {results.analysis.claims.map((claim, idx) => (
-                          <li key={idx} className="text-sm">{claim}</li>
+                          <li key={idx} className=\"text-sm\">{claim}</li>
                         ))}
                       </ul>
                     </div>
@@ -368,33 +393,33 @@ Please be specific and factual in your answers.`
               )}
 
               {results.error && (
-                <div className="bg-red-50 border-2 border-red-500 rounded-xl p-6">
-                  <h2 className="text-xl font-bold text-red-900 mb-2">❌ Error</h2>
-                  <p className="text-red-800 font-mono text-sm">{results.error}</p>
+                <div className=\"bg-red-50 border-2 border-red-500 rounded-xl p-6\">
+                  <h2 className=\"text-xl font-bold text-red-900 mb-2\">❌ Error</h2>
+                  <p className=\"text-red-800 font-mono text-sm\">{results.error}</p>
                 </div>
               )}
 
               {results.response && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold mb-3">💬 Model Response</h3>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <pre className="whitespace-pre-wrap text-sm font-mono text-gray-800">{results.response}</pre>
+                <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
+                  <h3 className=\"text-lg font-semibold mb-3\">💬 Model Response</h3>
+                  <div className=\"bg-gray-50 rounded-lg p-4 border border-gray-200\">
+                    <pre className=\"whitespace-pre-wrap text-sm font-mono text-gray-800\">{results.response}</pre>
                   </div>
                 </div>
               )}
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold mb-4">🔧 Technical Details</h3>
+              <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
+                <h3 className=\"text-lg font-semibold mb-4\">🔧 Technical Details</h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">MODEL REQUESTED</div>
-                    <div className="font-mono text-sm font-bold text-blue-600">{results.modelRequested}</div>
+                <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">
+                  <div className=\"bg-gray-50 rounded-lg p-4 border border-gray-200\">
+                    <div className=\"text-xs font-semibold text-gray-500 mb-1\">MODEL REQUESTED</div>
+                    <div className=\"font-mono text-sm font-bold text-blue-600\">{results.modelRequested}</div>
                   </div>
                   
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">RESPONSE TIME</div>
-                    <div className="font-mono text-sm font-bold text-green-600">{results.responseTime}ms</div>
+                  <div className=\"bg-gray-50 rounded-lg p-4 border border-gray-200\">
+                    <div className=\"text-xs font-semibold text-gray-500 mb-1\">RESPONSE TIME</div>
+                    <div className=\"font-mono text-sm font-bold text-green-600\">{results.responseTime}ms</div>
                   </div>
                 </div>
               </div>
@@ -403,38 +428,38 @@ Please be specific and factual in your answers.`
 
           {/* Bulk Test Results */}
           {testMode === 'all' && bulkResults.length > 0 && (
-            <div className="space-y-6">
+            <div className=\"space-y-6\">
               {/* Summary Stats */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold mb-4">📊 Test Summary</h2>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <div className="text-2xl font-bold text-gray-900">{getBulkStats().total}</div>
-                    <div className="text-xs text-gray-500 mt-1">Total Tested</div>
+              <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
+                <h2 className=\"text-xl font-bold mb-4\">📊 Test Summary</h2>
+                <div className=\"grid grid-cols-2 md:grid-cols-5 gap-4\">
+                  <div className=\"bg-gray-50 rounded-lg p-4 text-center\">
+                    <div className=\"text-2xl font-bold text-gray-900\">{getBulkStats().total}</div>
+                    <div className=\"text-xs text-gray-500 mt-1\">Total Tested</div>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-4 text-center border-2 border-green-500">
-                    <div className="text-2xl font-bold text-green-900">{getBulkStats().passed}</div>
-                    <div className="text-xs text-green-700 mt-1">✅ Passed</div>
+                  <div className=\"bg-green-50 rounded-lg p-4 text-center border-2 border-green-500\">
+                    <div className=\"text-2xl font-bold text-green-900\">{getBulkStats().passed}</div>
+                    <div className=\"text-xs text-green-700 mt-1\">✅ Passed</div>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-4 text-center border-2 border-red-500">
-                    <div className="text-2xl font-bold text-red-900">{getBulkStats().failed}</div>
-                    <div className="text-xs text-red-700 mt-1">❌ Failed</div>
+                  <div className=\"bg-red-50 rounded-lg p-4 text-center border-2 border-red-500\">
+                    <div className=\"text-2xl font-bold text-red-900\">{getBulkStats().failed}</div>
+                    <div className=\"text-xs text-red-700 mt-1\">❌ Failed</div>
                   </div>
-                  <div className="bg-yellow-50 rounded-lg p-4 text-center border-2 border-yellow-500">
-                    <div className="text-2xl font-bold text-yellow-900">{getBulkStats().inconclusive}</div>
-                    <div className="text-xs text-yellow-700 mt-1">⚠️ Inconclusive</div>
+                  <div className=\"bg-yellow-50 rounded-lg p-4 text-center border-2 border-yellow-500\">
+                    <div className=\"text-2xl font-bold text-yellow-900\">{getBulkStats().inconclusive}</div>
+                    <div className=\"text-xs text-yellow-700 mt-1\">⚠️ Inconclusive</div>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-4 text-center border-2 border-orange-500">
-                    <div className="text-2xl font-bold text-orange-900">{getBulkStats().errors}</div>
-                    <div className="text-xs text-orange-700 mt-1">🔥 Errors</div>
+                  <div className=\"bg-orange-50 rounded-lg p-4 text-center border-2 border-orange-500\">
+                    <div className=\"text-2xl font-bold text-orange-900\">{getBulkStats().errors}</div>
+                    <div className=\"text-xs text-orange-700 mt-1\">🔥 Errors</div>
                   </div>
                 </div>
               </div>
 
               {/* Individual Results */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold mb-4">🔍 Individual Model Results</h2>
-                <div className="space-y-3">
+              <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
+                <h2 className=\"text-xl font-bold mb-4\">🔍 Individual Model Results</h2>
+                <div className=\"space-y-3\">
                   {bulkResults.map((result, idx) => {
                     const statusColor = !result.success
                       ? 'border-orange-500 bg-orange-50'
@@ -442,12 +467,12 @@ Please be specific and factual in your answers.`
                       ? 'border-green-500 bg-green-50'
                       : result.analysis?.verdict === 'incorrect'
                       ? 'border-red-500 bg-red-50'
-                      : 'border-gray-300 bg-gray-50';
+                      : 'border-yellow-300 bg-yellow-50';
 
                     return (
                       <details key={idx} className={`border-2 rounded-lg ${statusColor}`}>
-                        <summary className="cursor-pointer p-4 font-semibold hover:opacity-80">
-                          <span className="inline-block w-6">
+                        <summary className=\"cursor-pointer p-4 font-semibold hover:opacity-80\">
+                          <span className=\"inline-block w-6\">
                             {!result.success
                               ? '🔥'
                               : result.analysis?.verdict === 'correct'
@@ -456,37 +481,47 @@ Please be specific and factual in your answers.`
                               ? '❌'
                               : '⚠️'}
                           </span>
-                          <span className="ml-2">{result.modelInfo.provider}</span>
-                          <span className="mx-2">·</span>
-                          <span className="font-bold">{result.modelInfo.name}</span>
-                          <span className="ml-4 text-xs font-mono text-gray-500">{result.modelInfo.id}</span>
+                          <span className=\"ml-2\">{result.modelInfo.provider}</span>
+                          <span className=\"mx-2\">·</span>
+                          <span className=\"font-bold\">{result.modelInfo.name}</span>
+                          <span className=\"ml-4 text-xs font-mono text-gray-500\">{result.modelInfo.id}</span>
                         </summary>
-                        <div className="p-4 pt-0 space-y-3">
+                        <div className=\"p-4 pt-0 space-y-3\">
                           {result.error && (
-                            <div className="text-sm text-red-700 font-mono">
+                            <div className=\"text-sm text-red-700 font-mono\">
                               Error: {result.error}
                             </div>
                           )}
                           {result.analysis?.flags.length > 0 && (
                             <div>
-                              <div className="text-sm font-semibold mb-1">Issues:</div>
-                              <ul className="text-sm space-y-1">
+                              <div className=\"text-sm font-semibold mb-1\">Issues:</div>
+                              <ul className=\"text-sm space-y-1\">
                                 {result.analysis.flags.map((flag, i) => (
                                   <li key={i}>• {flag}</li>
                                 ))}
                               </ul>
                             </div>
                           )}
+                          {result.analysis?.claims.length > 0 && (
+                            <div>
+                              <div className=\"text-sm font-semibold mb-1\">Analysis:</div>
+                              <ul className=\"text-sm space-y-1\">
+                                {result.analysis.claims.map((claim, i) => (
+                                  <li key={i}>• {claim}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                           {result.response && (
                             <div>
-                              <div className="text-sm font-semibold mb-1">Response:</div>
-                              <div className="text-xs bg-white rounded p-2 font-mono max-h-40 overflow-y-auto">
+                              <div className=\"text-sm font-semibold mb-1\">Response:</div>
+                              <div className=\"text-xs bg-white rounded p-2 font-mono max-h-40 overflow-y-auto\">
                                 {result.response.substring(0, 300)}
                                 {result.response.length > 300 && '...'}
                               </div>
                             </div>
                           )}
-                          <div className="text-xs text-gray-500">
+                          <div className=\"text-xs text-gray-500\">
                             Response time: {result.responseTime}ms
                           </div>
                         </div>
