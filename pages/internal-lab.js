@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import Head from 'next/head';
 
-// Import models list from multiAI
 const ALL_MODELS = [
   { id: 'anthropic/claude-sonnet-4.5', name: 'Sonnet 4.5', provider: 'Anthropic', expectedVersion: '4.5' },
   { id: 'anthropic/claude-haiku-4.5', name: 'Haiku 4.5', provider: 'Anthropic', expectedVersion: '4.5' },
@@ -35,13 +34,7 @@ export default function InternalLab() {
 
   const runValidationTest = async (modelId = 'anthropic/claude-sonnet-4.5') => {
     const validationPrompt = autoTest
-      ? `Please answer these validation questions precisely:
-1. What is your exact model name and version?
-2. What is your knowledge cutoff date?
-3. When were you released/announced?
-4. What are your key capabilities?
-
-Please be specific and factual in your answers.`
+      ? 'Please answer these validation questions precisely:\\n1. What is your exact model name and version?\\n2. What is your knowledge cutoff date?\\n3. When were you released/announced?\\n4. What are your key capabilities?\\n\\nPlease be specific and factual in your answers.'
       : testInput;
 
     const startTime = Date.now();
@@ -120,7 +113,6 @@ Please be specific and factual in your answers.`
     const modelInfo = ALL_MODELS.find(m => m.id === modelId);
     const lower = responseText.toLowerCase();
     
-    // Extract answers to each question
     const answers = {
       modelName: extractAnswer(responseText, 1),
       cutoffDate: extractAnswer(responseText, 2),
@@ -128,7 +120,6 @@ Please be specific and factual in your answers.`
       capabilities: extractAnswer(responseText, 4),
     };
 
-    // Determine confidence for each answer
     const confidence = {
       modelName: assessModelNameConfidence(answers.modelName, modelInfo, lower),
       cutoffDate: assessCutoffConfidence(answers.cutoffDate, modelInfo, lower),
@@ -141,22 +132,20 @@ Please be specific and factual in your answers.`
 
   const extractAnswer = (text, questionNumber) => {
     const lines = text.split('\\n');
-    const questionPrefix = `${questionNumber}.`;
+    const questionPrefix = questionNumber + '.';
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith(questionPrefix)) {
         let answer = line.substring(questionPrefix.length).trim();
         
-        // Include next line if answer continues
         if (i + 1 < lines.length && !lines[i + 1].match(/^\\d+\\./)) {
           answer += ' ' + lines[i + 1].trim();
         }
         
-        // Clean up answer markers
-        answer = answer.replace(/^\*\*.*?\*\*/, '').trim();
+        answer = answer.replace(/^\\*\\*.*?\\*\\*/, '').trim();
         
-        return answer.substring(0, 200); // Limit length
+        return answer.substring(0, 200);
       }
     }
     
@@ -167,81 +156,75 @@ Please be specific and factual in your answers.`
     const lower = answer.toLowerCase();
     const fullLower = fullText.toLowerCase();
     
-    // Check for explicit version mismatches (Claude specific)
     if (modelInfo.provider === 'Anthropic') {
       if (modelInfo.expectedVersion === '4.5' || modelInfo.expectedVersion === '4.1') {
         if (fullLower.includes('3.5') || fullLower.includes('claude 3')) {
-          return 'incorrect'; // Red: Wrong version
+          return 'incorrect';
         }
         if (fullLower.includes('4.5') || fullLower.includes('4.1') || fullLower.includes('sonnet 4') || fullLower.includes('haiku 4') || fullLower.includes('opus 4')) {
-          return 'confirmed'; // Green: Confirmed correct
+          return 'confirmed';
         }
       }
     }
     
-    // For other providers
     const providerName = modelInfo.provider.toLowerCase();
     if (lower.includes(providerName) || lower.includes(modelInfo.name.toLowerCase())) {
-      return 'confirmed'; // Green: Mentions provider/model name
+      return 'confirmed';
     }
     
     if (lower.includes('do not have') || lower.includes('cannot') || lower === 'no clear answer provided') {
-      return 'estimated'; // Amber: No specific info but responded
+      return 'estimated';
     }
     
-    return 'estimated'; // Amber: Default for non-Claude
+    return 'estimated';
   };
 
   const assessCutoffConfidence = (answer, modelInfo, fullText) => {
     const lower = fullText.toLowerCase();
     
-    // Claude-specific checks
     if (modelInfo.provider === 'Anthropic') {
       if (lower.includes('april 2024') || lower.includes('2024-04')) {
-        return 'incorrect'; // Red: Claude 3.5 cutoff
+        return 'incorrect';
       }
       if (lower.includes('2025') || lower.includes('january 2025')) {
-        return 'confirmed'; // Green: Claude 4.x cutoff
+        return 'confirmed';
       }
     }
     
-    // Any cutoff date mentioned
     if (answer.match(/20\\d{2}/) || lower.includes('202')) {
-      return 'confirmed'; // Green: Date provided
+      return 'confirmed';
     }
     
-    return 'estimated'; // Amber: No specific date
+    return 'estimated';
   };
 
   const assessReleaseConfidence = (answer, modelInfo, fullText) => {
     const lower = fullText.toLowerCase();
     
-    // Claude-specific checks
     if (modelInfo.provider === 'Anthropic') {
       if (lower.includes('june 2024') || lower.includes('2024-06')) {
-        return 'incorrect'; // Red: Claude 3.5 release
+        return 'incorrect';
       }
       if (lower.includes('october 2024') || lower.includes('2024-10')) {
-        return 'confirmed'; // Green: Newer release
+        return 'confirmed';
       }
     }
     
-    // Any release date mentioned
     if (answer.match(/20\\d{2}/)) {
-      return 'confirmed'; // Green: Date provided
+      return 'confirmed';
     }
     
-    return 'estimated'; // Amber: No specific date
+    return 'estimated';
   };
 
   const assessCapabilitiesConfidence = (answer, fullText) => {
     if (answer.length > 50) {
-      return 'confirmed'; // Green: Detailed answer
+      return 'confirmed';
     }
     if (answer === 'No clear answer provided') {
-      return 'estimated'; // Amber: No answer
+      return 'estimated';
     }
-    return 'estimated'; // Amber: Short answer
+    return 'estimated';
   };
 
   const getConfidenceColor = (confidence) => {
@@ -277,7 +260,7 @@ Please be specific and factual in your answers.`
     bulkResults.forEach(r => {
       if (!r.success) {
         errors++;
-      } else if (r.analysis?.confidence) {
+      } else if (r.analysis && r.analysis.confidence) {
         const { modelName, cutoffDate, releaseDate } = r.analysis.confidence;
         if (modelName === 'incorrect' || cutoffDate === 'incorrect' || releaseDate === 'incorrect') {
           incorrect++;
@@ -296,45 +279,37 @@ Please be specific and factual in your answers.`
     <>
       <Head>
         <title>Internal Lab - Model Validator</title>
-        <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap\" rel=\"stylesheet\" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
       </Head>
 
-      <div className=\"min-h-screen bg-gray-50 text-gray-900\">
-        <div className=\"max-w-[1600px] mx-auto p-6\">
-          <div className=\"mb-8 border-b border-gray-300 pb-6\">
-            <div className=\"flex items-center justify-between\">
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        <div className="max-w-[1600px] mx-auto p-6">
+          <div className="mb-8 border-b border-gray-300 pb-6">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className=\"text-3xl font-bold text-gray-900\">🧪 Internal Lab</h1>
-                <p className=\"text-sm text-gray-600 mt-2\">AI Gateway Model Validator - Comparative Analysis</p>
+                <h1 className="text-3xl font-bold text-gray-900">🧪 Internal Lab</h1>
+                <p className="text-sm text-gray-600 mt-2">AI Gateway Model Validator - Comparative Analysis</p>
               </div>
-              <div className=\"text-right\">
-                <div className=\"inline-block bg-yellow-100 border-2 border-yellow-500 rounded-lg px-4 py-2\">
-                  <div className=\"text-xs font-bold text-yellow-800\">⚠️ INTERNAL USE ONLY</div>
+              <div className="text-right">
+                <div className="inline-block bg-yellow-100 border-2 border-yellow-500 rounded-lg px-4 py-2">
+                  <div className="text-xs font-bold text-yellow-800">⚠️ INTERNAL USE ONLY</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
-            <h2 className=\"text-lg font-semibold mb-4\">Test Mode</h2>
-            <div className=\"flex space-x-4 mb-4\">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 className="text-lg font-semibold mb-4">Test Mode</h2>
+            <div className="flex space-x-4 mb-4">
               <button
                 onClick={() => setTestMode('single')}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
-                  testMode === 'single'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={'flex-1 py-3 px-6 rounded-lg font-semibold transition-all ' + (testMode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
               >
-                🎯 Single Model Test
+                �� Single Model Test
               </button>
               <button
                 onClick={() => setTestMode('all')}
-                className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all ${
-                  testMode === 'all'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                className={'flex-1 py-3 px-6 rounded-lg font-semibold transition-all ' + (testMode === 'all' ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}
               >
                 🚀 Test All {ALL_MODELS.length} Models
               </button>
@@ -342,16 +317,12 @@ Please be specific and factual in your answers.`
           </div>
 
           {testMode === 'single' && (
-            <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
-              <h2 className=\"text-lg font-semibold mb-4\">Single Model Test</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold mb-4">Single Model Test</h2>
               <button
                 onClick={runSingleTest}
                 disabled={isLoading}
-                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all ${
-                  isLoading
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                }`}
+                className={'w-full py-3 px-6 rounded-lg font-semibold transition-all ' + (isLoading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md')}
               >
                 {isLoading ? 'Testing...' : '🧪 Test Claude Sonnet 4.5'}
               </button>
@@ -359,19 +330,19 @@ Please be specific and factual in your answers.`
           )}
 
           {testMode === 'all' && (
-            <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6\">
-              <h2 className=\"text-lg font-semibold mb-4\">Bulk Test All Models</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h2 className="text-lg font-semibold mb-4">Bulk Test All Models</h2>
               
               {isLoading && (
-                <div className=\"mb-4\">
-                  <div className=\"flex justify-between text-sm mb-2\">
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-2">
                     <span>Progress:</span>
-                    <span className=\"font-semibold\">{bulkProgress.current} / {bulkProgress.total}</span>
+                    <span className="font-semibold">{bulkProgress.current} / {bulkProgress.total}</span>
                   </div>
-                  <div className=\"w-full bg-gray-200 rounded-full h-2.5\">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div
-                      className=\"bg-purple-600 h-2.5 rounded-full transition-all\"
-                      style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                      className="bg-purple-600 h-2.5 rounded-full transition-all"
+                      style={{ width: (bulkProgress.current / bulkProgress.total) * 100 + '%' }}
                     ></div>
                   </div>
                 </div>
@@ -380,96 +351,92 @@ Please be specific and factual in your answers.`
               <button
                 onClick={runBulkTest}
                 disabled={isLoading}
-                className={`w-full py-3 px-6 rounded-lg font-semibold transition-all ${
-                  isLoading
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-purple-600 text-white hover:bg-purple-700 shadow-md'
-                }`}
+                className={'w-full py-3 px-6 rounded-lg font-semibold transition-all ' + (isLoading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700 shadow-md')}
               >
-                {isLoading ? `Testing ${bulkProgress.current}/${bulkProgress.total}...` : `🚀 Test All ${ALL_MODELS.length} Models`}
+                {isLoading ? 'Testing ' + bulkProgress.current + '/' + bulkProgress.total + '...' : '🚀 Test All ' + ALL_MODELS.length + ' Models'}
               </button>
             </div>
           )}
 
           {testMode === 'all' && bulkResults.length > 0 && (
-            <div className=\"space-y-6\">
-              <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6\">
-                <h2 className=\"text-xl font-bold mb-4\">📊 Summary</h2>
-                <div className=\"grid grid-cols-2 md:grid-cols-5 gap-4\">
-                  <div className=\"bg-gray-50 rounded-lg p-4 text-center\">
-                    <div className=\"text-2xl font-bold\">{getBulkStats().total}</div>
-                    <div className=\"text-xs text-gray-500 mt-1\">Total</div>
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-bold mb-4">📊 Summary</h2>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold">{getBulkStats().total}</div>
+                    <div className="text-xs text-gray-500 mt-1">Total</div>
                   </div>
-                  <div className=\"bg-green-50 rounded-lg p-4 text-center border-2 border-green-500\">
-                    <div className=\"text-2xl font-bold text-green-900\">{getBulkStats().confirmed}</div>
-                    <div className=\"text-xs text-green-700 mt-1\">✅ Confirmed</div>
+                  <div className="bg-green-50 rounded-lg p-4 text-center border-2 border-green-500">
+                    <div className="text-2xl font-bold text-green-900">{getBulkStats().confirmed}</div>
+                    <div className="text-xs text-green-700 mt-1">✅ Confirmed</div>
                   </div>
-                  <div className=\"bg-amber-50 rounded-lg p-4 text-center border-2 border-amber-500\">
-                    <div className=\"text-2xl font-bold text-amber-900\">{getBulkStats().estimated}</div>
-                    <div className=\"text-xs text-amber-700 mt-1\">🟡 Estimated</div>
+                  <div className="bg-amber-50 rounded-lg p-4 text-center border-2 border-amber-500">
+                    <div className="text-2xl font-bold text-amber-900">{getBulkStats().estimated}</div>
+                    <div className="text-xs text-amber-700 mt-1">🟡 Estimated</div>
                   </div>
-                  <div className=\"bg-red-50 rounded-lg p-4 text-center border-2 border-red-500\">
-                    <div className=\"text-2xl font-bold text-red-900\">{getBulkStats().incorrect}</div>
-                    <div className=\"text-xs text-red-700 mt-1\">❌ Incorrect</div>
+                  <div className="bg-red-50 rounded-lg p-4 text-center border-2 border-red-500">
+                    <div className="text-2xl font-bold text-red-900">{getBulkStats().incorrect}</div>
+                    <div className="text-xs text-red-700 mt-1">❌ Incorrect</div>
                   </div>
-                  <div className=\"bg-orange-50 rounded-lg p-4 text-center border-2 border-orange-500\">
-                    <div className=\"text-2xl font-bold text-orange-900\">{getBulkStats().errors}</div>
-                    <div className=\"text-xs text-orange-700 mt-1\">🔥 Errors</div>
+                  <div className="bg-orange-50 rounded-lg p-4 text-center border-2 border-orange-500">
+                    <div className="text-2xl font-bold text-orange-900">{getBulkStats().errors}</div>
+                    <div className="text-xs text-orange-700 mt-1">🔥 Errors</div>
                   </div>
                 </div>
               </div>
 
-              <div className=\"bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto\">
-                <h2 className=\"text-xl font-bold mb-4\">📋 Comparative Results Table</h2>
-                <table className=\"w-full text-sm\">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                <h2 className="text-xl font-bold mb-4">📋 Comparative Results Table</h2>
+                <table className="w-full text-sm">
                   <thead>
-                    <tr className=\"border-b-2 border-gray-300\">
-                      <th className=\"text-left p-3 font-semibold bg-gray-50 sticky left-0\">Model</th>
-                      <th className=\"text-left p-3 font-semibold bg-gray-50\">Model Name & Version</th>
-                      <th className=\"text-left p-3 font-semibold bg-gray-50\">Knowledge Cutoff</th>
-                      <th className=\"text-left p-3 font-semibold bg-gray-50\">Release Date</th>
-                      <th className=\"text-left p-3 font-semibold bg-gray-50\">Capabilities</th>
-                      <th className=\"text-center p-3 font-semibold bg-gray-50\">Time</th>
+                    <tr className="border-b-2 border-gray-300">
+                      <th className="text-left p-3 font-semibold bg-gray-50 sticky left-0">Model</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Model Name &amp; Version</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Knowledge Cutoff</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Release Date</th>
+                      <th className="text-left p-3 font-semibold bg-gray-50">Capabilities</th>
+                      <th className="text-center p-3 font-semibold bg-gray-50">Time</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bulkResults.map((result, idx) => (
-                      <tr key={idx} className=\"border-b border-gray-200 hover:bg-gray-50\">
-                        <td className=\"p-3 font-medium sticky left-0 bg-white\">
-                          <div className=\"text-xs text-gray-500\">{result.modelInfo.provider}</div>
-                          <div className=\"font-semibold\">{result.modelInfo.name}</div>
+                      <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                        <td className="p-3 font-medium sticky left-0 bg-white">
+                          <div className="text-xs text-gray-500">{result.modelInfo.provider}</div>
+                          <div className="font-semibold">{result.modelInfo.name}</div>
                         </td>
                         {result.error ? (
-                          <td colSpan=\"5\" className=\"p-3 text-red-600 font-mono text-xs\">
+                          <td colSpan="5" className="p-3 text-red-600 font-mono text-xs">
                             Error: {result.error}
                           </td>
                         ) : (
                           <>
-                            <td className={`p-3 border-l border-gray-200 ${getConfidenceColor(result.analysis?.confidence.modelName)}`}>
-                              <div className=\"flex items-start\">
-                                <span className=\"mr-2\">{getConfidenceIcon(result.analysis?.confidence.modelName)}</span>
-                                <span className=\"text-xs\">{result.analysis?.answers.modelName}</span>
+                            <td className={'p-3 border-l border-gray-200 ' + getConfidenceColor(result.analysis && result.analysis.confidence.modelName)}>
+                              <div className="flex items-start">
+                                <span className="mr-2">{getConfidenceIcon(result.analysis && result.analysis.confidence.modelName)}</span>
+                                <span className="text-xs">{result.analysis && result.analysis.answers.modelName}</span>
                               </div>
                             </td>
-                            <td className={`p-3 border-l border-gray-200 ${getConfidenceColor(result.analysis?.confidence.cutoffDate)}`}>
-                              <div className=\"flex items-start\">
-                                <span className=\"mr-2\">{getConfidenceIcon(result.analysis?.confidence.cutoffDate)}</span>
-                                <span className=\"text-xs\">{result.analysis?.answers.cutoffDate}</span>
+                            <td className={'p-3 border-l border-gray-200 ' + getConfidenceColor(result.analysis && result.analysis.confidence.cutoffDate)}>
+                              <div className="flex items-start">
+                                <span className="mr-2">{getConfidenceIcon(result.analysis && result.analysis.confidence.cutoffDate)}</span>
+                                <span className="text-xs">{result.analysis && result.analysis.answers.cutoffDate}</span>
                               </div>
                             </td>
-                            <td className={`p-3 border-l border-gray-200 ${getConfidenceColor(result.analysis?.confidence.releaseDate)}`}>
-                              <div className=\"flex items-start\">
-                                <span className=\"mr-2\">{getConfidenceIcon(result.analysis?.confidence.releaseDate)}</span>
-                                <span className=\"text-xs\">{result.analysis?.answers.releaseDate}</span>
+                            <td className={'p-3 border-l border-gray-200 ' + getConfidenceColor(result.analysis && result.analysis.confidence.releaseDate)}>
+                              <div className="flex items-start">
+                                <span className="mr-2">{getConfidenceIcon(result.analysis && result.analysis.confidence.releaseDate)}</span>
+                                <span className="text-xs">{result.analysis && result.analysis.answers.releaseDate}</span>
                               </div>
                             </td>
-                            <td className={`p-3 border-l border-gray-200 ${getConfidenceColor(result.analysis?.confidence.capabilities)}`}>
-                              <div className=\"flex items-start\">
-                                <span className=\"mr-2\">{getConfidenceIcon(result.analysis?.confidence.capabilities)}</span>
-                                <span className=\"text-xs line-clamp-2\">{result.analysis?.answers.capabilities}</span>
+                            <td className={'p-3 border-l border-gray-200 ' + getConfidenceColor(result.analysis && result.analysis.confidence.capabilities)}>
+                              <div className="flex items-start">
+                                <span className="mr-2">{getConfidenceIcon(result.analysis && result.analysis.confidence.capabilities)}</span>
+                                <span className="text-xs line-clamp-2">{result.analysis && result.analysis.answers.capabilities}</span>
                               </div>
                             </td>
-                            <td className=\"p-3 border-l border-gray-200 text-center text-xs text-gray-500\">
+                            <td className="p-3 border-l border-gray-200 text-center text-xs text-gray-500">
                               {result.responseTime}ms
                             </td>
                           </>
@@ -480,12 +447,12 @@ Please be specific and factual in your answers.`
                 </table>
               </div>
 
-              <div className=\"bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm\">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
                 <strong>Legend:</strong>
-                <ul className=\"mt-2 space-y-1\">
+                <ul className="mt-2 space-y-1">
                   <li>✅ <strong>Confirmed (Green):</strong> Model explicitly confirms expected information</li>
                   <li>🟡 <strong>Estimated (Amber):</strong> Reasonable to assume correct, but not explicitly confirmed</li>
-                  <li>❌ <strong>Incorrect (Red):</strong> Model confirms it's NOT the requested version (misrouting detected)</li>
+                  <li>❌ <strong>Incorrect (Red):</strong> Model confirms it is NOT the requested version (misrouting detected)</li>
                 </ul>
               </div>
             </div>
@@ -493,7 +460,7 @@ Please be specific and factual in your answers.`
         </div>
       </div>
 
-      <style jsx global>{`
+      <style jsx global>{\`
         body {
           font-family: 'Inter', sans-serif;
         }
@@ -503,7 +470,7 @@ Please be specific and factual in your answers.`
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
-      `}</style>
+      \`}</style>
     </>
   );
 }
