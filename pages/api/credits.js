@@ -5,42 +5,49 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.AI_GATEWAY_API_KEY;
   
-  // For now, return your actual balance of $4.99
-  // The Vercel AI Gateway API endpoint for balance is not publicly documented
-  // You may need to check Vercel's dashboard or documentation for the exact endpoint
-  
+  if (!apiKey) {
+    return res.status(200).json({
+      credits: 0,
+      currency: 'USD',
+      updated_at: new Date().toISOString(),
+      note: 'Configure AI_GATEWAY_API_KEY environment variable'
+    });
+  }
+
   try {
-    if (!apiKey) {
-      // No API key configured, return your known balance
-      return res.status(200).json({
-        credits: 4.99,
-        currency: 'USD',
-        updated_at: new Date().toISOString(),
-        note: 'Static balance - configure AI_GATEWAY_API_KEY for live updates'
-      });
+    // Fetch real balance from Vercel AI Gateway
+    const response = await fetch('https://ai-gateway.vercel.sh/v1/credits', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gateway API returned ${response.status}: ${response.statusText}`);
     }
 
-    // Attempt to fetch real balance from Vercel AI Gateway
-    // Note: The exact endpoint needs to be verified with Vercel's documentation
-    // Possible endpoints to try:
-    // - https://gateway.vercel.sh/v1/usage
-    // - https://api.vercel.com/v1/ai-gateway/balance
-    // - https://api.vercel.com/v1/ai/usage
+    const data = await response.json();
     
-    // For now, return your actual balance
+    // Return the real balance from Vercel AI Gateway
     return res.status(200).json({
-      credits: 4.99,  // Your actual balance
+      credits: parseFloat(data.balance) || 0,
+      total_used: parseFloat(data.total_used) || 0,
       currency: 'USD',
       updated_at: new Date().toISOString()
     });
     
   } catch (error) {
-    console.error('Error fetching credits:', error);
-    return res.status(200).json({ 
-      credits: 4.99,  // Fallback to your known balance
+    console.error('Error fetching credits from Vercel AI Gateway:', error);
+    
+    // Return error info for debugging
+    return res.status(500).json({ 
+      credits: 0,
       currency: 'USD',
       updated_at: new Date().toISOString(),
-      fallback: true
+      error: 'Failed to fetch real balance',
+      details: error.message
     });
   }
 }
