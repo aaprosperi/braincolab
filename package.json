@@ -7,14 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "ai": "^3.0.0",
     "openai": "^4.0.0",
     "next": "14.0.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "@vercel/postgres": "^0.5.1",
+    "react-force-graph-2d": "^1.25.4",
+    "pgvector": "^0.1.8"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -25,6 +29,7 @@
     "tailwindcss": "^3.3.0",
     "typescript": "^5",
     "eslint": "^8",
-    "eslint-config-next": "14.0.0"
+    "eslint-config-next": "14.0.0",
+    "tsx": "^4.7.0"
   }
 }
